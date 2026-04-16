@@ -1,223 +1,284 @@
 ﻿#include <iostream>
-#include <vector>
-#include <memory>
 #include <string>
+#include <vector>
 
 using namespace std;
 
-// Базовый абстрактный класс для всех устройств
-class SmartDevice {
+// Класс Дерево
+class Tree {
+private:
+    int branchCount;
+    string species;
+
 public:
-    virtual ~SmartDevice() = default;
-    virtual void TurnOn() = 0;
-    virtual void TurnOff() = 0;
-    virtual string getDeviceName() const = 0;
+    // Конструктор
+    Tree(int branches, const string& type) : branchCount(branches), species(type) {
+        cout << "🌳 СОЗДАНО дерево: " << species
+            << " с " << branchCount << " ветками (адрес: " << this << ")" << endl;
+    }
+
+    // Деструктор
+    ~Tree() {
+        cout << "❌ УНИЧТОЖЕНО дерево: " << species
+            << " (адрес: " << this << ")" << endl;
+    }
+
+    // Метод для вывода информации о дереве
+    void displayInfo() const {
+        cout << "Дерево: " << species << ", веток: " << branchCount;
+    }
+
+    // Геттеры
+    int getBranchCount() const { return branchCount; }
+    string getSpecies() const { return species; }
 };
 
-// Класс Light (свет)
-class Light : public SmartDevice {
+// Класс Лес (контейнер для деревьев)
+class Forest {
 private:
-    string location;
-    int brightness;
+    // Агрегация: храним указатели на деревья (не владеем ими)
+    vector<Tree*> trees;
 
 public:
-    Light(const string& loc = "Комната") : location(loc), brightness(0) {}
-
-    void TurnOn() override {
-        brightness = 100;
-        cout << "💡 " << location << ": Свет включен. Яркость: " << brightness << "%" << endl;
+    // Конструктор
+    Forest() {
+        cout << "🏞️ СОЗДАН лес (адрес: " << this << ")" << endl;
     }
 
-    void TurnOff() override {
-        brightness = 0;
-        cout << "💡 " << location << ": Свет выключен" << endl;
+    // Деструктор
+    ~Forest() {
+        cout << "🔥 УНИЧТОЖЕН лес (адрес: " << this << ")" << endl;
+        cout << "   Лес уничтожен, но деревья продолжают существовать!" << endl;
+        // НЕ удаляем деревья! Они существуют отдельно от леса
     }
 
-    string getDeviceName() const override {
-        return "Свет в " + location;
-    }
-};
-
-// Класс Thermostat (термостат)
-class Thermostat : public SmartDevice {
-private:
-    int temperature;
-    string mode;
-
-public:
-    Thermostat() : temperature(20), mode("OFF") {}
-
-    void TurnOn() override {
-        temperature = 22;
-        mode = "HEATING";
-        cout << "🌡️ Термостат: Включен. Температура установлена на " << temperature << "°C. Режим: " << mode << endl;
+    // Метод добавления дерева в лес (получает указатель извне)
+    void addTree(Tree* tree) {
+        if (tree != nullptr) {
+            trees.push_back(tree);
+            cout << "   ➕ Дерево добавлено в лес: ";
+            tree->displayInfo();
+            cout << endl;
+        }
     }
 
-    void TurnOff() override {
-        temperature = 15;
-        mode = "OFF";
-        cout << "🌡️ Термостат: Выключен. Температура: " << temperature << "°C. Режим: " << mode << endl;
-    }
-
-    string getDeviceName() const override {
-        return "Термостат";
-    }
-};
-
-// Класс Radio (радио)
-class Radio : public SmartDevice {
-private:
-    double frequency;
-    string station;
-    int volume;
-
-public:
-    Radio() : frequency(98.7), station("Europe Plus"), volume(0) {}
-
-    void TurnOn() override {
-        volume = 30;
-        cout << "📻 Радио: Включено. Станция: " << station << " (" << frequency << " FM). Громкость: " << volume << "%" << endl;
-    }
-
-    void TurnOff() override {
-        volume = 0;
-        cout << "📻 Радио: Выключено" << endl;
-    }
-
-    string getDeviceName() const override {
-        return "Радио";
-    }
-};
-
-// Класс SmartHome (умный дом) - класс-контейнер
-class SmartHome {
-private:
-    vector<unique_ptr<SmartDevice>> devices;
-    bool nightMode;
-
-public:
-    SmartHome() : nightMode(false) {
-        cout << "🏠 Система 'Умный дом' инициализирована" << endl;
-        cout << "========================================" << endl;
-    }
-
-    // Добавление устройства в дом
-    void addDevice(unique_ptr<SmartDevice> device) {
-        cout << "➕ Добавлено устройство: " << device->getDeviceName() << endl;
-        devices.push_back(move(device));
-    }
-
-    // Включение ночного режима
-    void EnableNightMode() {
-        if (nightMode) {
-            cout << "🌙 Ночной режим уже активен!" << endl;
+    // Метод вывода всех деревьев в лесу
+    void displayForest() const {
+        if (trees.empty()) {
+            cout << "   Лес пуст" << endl;
             return;
         }
 
-        nightMode = true;
-        cout << "\n🌙 ВКЛЮЧЕНИЕ НОЧНОГО РЕЖИМА" << endl;
-        cout << "----------------------------------------" << endl;
-
-        for (auto& device : devices) {
-            device->TurnOn();
+        cout << "   В лесу " << trees.size() << " деревьев:" << endl;
+        for (size_t i = 0; i < trees.size(); i++) {
+            cout << "      " << i + 1 << ". ";
+            trees[i]->displayInfo();
+            cout << endl;
         }
-
-        cout << "----------------------------------------" << endl;
-        cout << "✅ Ночной режим активирован" << endl << endl;
     }
 
-    // Выключение ночного режима
-    void DisableNightMode() {
-        if (!nightMode) {
-            cout << "☀️ Ночной режим уже выключен!" << endl;
-            return;
-        }
+    // Получить количество деревьев
+    size_t getTreeCount() const { return trees.size(); }
+};
 
-        nightMode = false;
-        cout << "\n☀️ ВЫКЛЮЧЕНИЕ НОЧНОГО РЕЖИМА" << endl;
-        cout << "----------------------------------------" << endl;
+// Дополнительный класс для демонстрации композиции (для сравнения)
+class ComposedForest {
+private:
+    // Композиция: храним объекты по значению (владеем ими)
+    vector<Tree> ownedTrees;
 
-        for (auto& device : devices) {
-            device->TurnOff();
-        }
-
-        cout << "----------------------------------------" << endl;
-        cout << "✅ Ночной режим деактивирован" << endl << endl;
+public:
+    ComposedForest() {
+        cout << "🏞️ СОЗДАН лес с композицией (адрес: " << this << ")" << endl;
     }
 
-    // Показать статус всех устройств (дополнительный метод для демонстрации)
-    void ShowStatus() {
-        cout << "\n📊 ТЕКУЩИЙ СТАТУС УСТРОЙСТВ:" << endl;
-        cout << "----------------------------------------" << endl;
-        cout << "Режим: " << (nightMode ? "🌙 Ночной" : "☀️ Дневной") << endl;
-        cout << "Количество устройств: " << devices.size() << endl;
-        cout << "----------------------------------------" << endl;
+    ~ComposedForest() {
+        cout << "🔥 УНИЧТОЖЕН лес с композицией (адрес: " << this << ")" << endl;
+        // Деревья будут уничтожены автоматически вместе с лесом!
+        cout << "   ⚠️ ДЕРЕВЬЯ УНИЧТОЖЕНЫ вместе с лесом!" << endl;
     }
 
-    // Получить статус ночного режима
-    bool isNightMode() const {
-        return nightMode;
+    void addTree(const Tree& tree) {
+        ownedTrees.push_back(tree);
+        cout << "   ➕ Дерево добавлено в лес (композиция)" << endl;
     }
 };
 
 int main() {
     setlocale(LC_ALL, "Russian");
 
-    cout << "========================================" << endl;
-    cout << "      СИСТЕМА 'УМНЫЙ ДОМ' v1.0" << endl;
-    cout << "========================================" << endl << endl;
+    cout << "================================================" << endl;
+    cout << "    ДЕМОНСТРАЦИЯ АГРЕГАЦИИ VS КОМПОЗИЦИИ" << endl;
+    cout << "================================================" << endl << endl;
 
-    // Создаем умный дом
-    SmartHome myHome;
+    // ===== ЧАСТЬ 1: АГРЕГАЦИЯ (лес хранит указатели) =====
+    cout << "🔹 ЧАСТЬ 1: АГРЕГАЦИЯ (лес хранит УКАЗАТЕЛИ)" << endl;
+    cout << "------------------------------------------------" << endl;
 
-    // Добавляем устройства
-    cout << "\n📦 УСТАНОВКА УСТРОЙСТВ:" << endl;
-    cout << "----------------------------------------" << endl;
+    // Создаем деревья вне леса
+    cout << "\n1. Создаем деревья ВНЕ леса:" << endl;
+    Tree* oak = new Tree(150, "Дуб");
+    Tree* pine = new Tree(80, "Сосна");
+    Tree* birch = new Tree(120, "Береза");
 
-    myHome.addDevice(make_unique<Light>("Гостиная"));
-    myHome.addDevice(make_unique<Light>("Спальня"));
-    myHome.addDevice(make_unique<Light>("Кухня"));
-    myHome.addDevice(make_unique<Thermostat>());
-    myHome.addDevice(make_unique<Radio>());
+    cout << "\n2. Создаем лес:" << endl;
+    Forest* myForest = new Forest();
 
-    cout << "----------------------------------------" << endl;
-    cout << "✅ Все устройства установлены" << endl << endl;
+    cout << "\n3. Добавляем деревья в лес:" << endl;
+    myForest->addTree(oak);
+    myForest->addTree(pine);
+    myForest->addTree(birch);
 
-    // Демонстрация работы
-    cout << "========================================" << endl;
-    cout << "        ДЕМОНСТРАЦИЯ РАБОТЫ" << endl;
-    cout << "========================================" << endl;
+    cout << "\n4. Выводим содержимое леса:" << endl;
+    myForest->displayForest();
 
-    // Показываем начальный статус
-    myHome.ShowStatus();
+    cout << "\n5. Удаляем лес:" << endl;
+    delete myForest;
 
-    // Включаем ночной режим
-    cout << "\n🎬 ДЕЙСТВИЕ: Включение ночного режима" << endl;
-    myHome.EnableNightMode();
+    cout << "\n6. Проверяем, существуют ли деревья после удаления леса:" << endl;
+    cout << "   Дуб (адрес: " << oak << "): ";
+    oak->displayInfo();
+    cout << endl;
+    cout << "   Сосна (адрес: " << pine << "): ";
+    pine->displayInfo();
+    cout << endl;
+    cout << "   Береза (адрес: " << birch << "): ";
+    birch->displayInfo();
+    cout << endl;
 
-    // Небольшая пауза (имитация работы)
-    cout << "💤 Ночь прошла спокойно..." << endl << endl;
+    cout << "\n7. Очищаем деревья вручную:" << endl;
+    delete oak;
+    delete pine;
+    delete birch;
 
-    // Выключаем ночной режим
-    cout << "🎬 ДЕЙСТВИЕ: Выключение ночного режима" << endl;
-    myHome.DisableNightMode();
+    // ===== ЧАСТЬ 2: КОМПОЗИЦИЯ (для сравнения) =====
+    cout << "\n\n🔸 ЧАСТЬ 2: КОМПОЗИЦИЯ (лес хранит объекты ПО ЗНАЧЕНИЮ)" << endl;
+    cout << "--------------------------------------------------------" << endl;
 
-    // Показываем финальный статус
-    myHome.ShowStatus();
+    {
+        cout << "\n1. Создаем лес с композицией:" << endl;
+        ComposedForest composedForest;
 
-    // Дополнительная демонстрация: повторное включение/выключение
-    cout << "\n🔄 ДОПОЛНИТЕЛЬНЫЕ ТЕСТЫ:" << endl;
-    cout << "========================================" << endl;
+        cout << "\n2. Создаем и добавляем деревья:" << endl;
+        Tree apple(50, "Яблоня");
+        Tree cherry(40, "Вишня");
 
-    cout << "\n▶ Попытка включить ночной режим повторно:" << endl;
-    myHome.EnableNightMode();
+        composedForest.addTree(apple);
+        composedForest.addTree(cherry);
 
-    cout << "\n▶ Попытка выключить ночной режим повторно:" << endl;
-    myHome.DisableNightMode();
+        cout << "\n3. Выход из области видимости - лес будет уничтожен" << endl;
+    } // Здесь composedForest уничтожается, а вместе с ним и деревья
 
-    cout << "\n========================================" << endl;
-    cout << "      ПРОГРАММА ЗАВЕРШЕНА" << endl;
-    cout << "========================================" << endl;
+    cout << "\n   (Деревья Яблоня и Вишня уничтожены вместе с лесом)" << endl;
+
+    // ===== ЧАСТЬ 3: ДОПОЛНИТЕЛЬНАЯ ДЕМОНСТРАЦИЯ =====
+    cout << "\n\n🔹 ЧАСТЬ 3: ДОПОЛНИТЕЛЬНАЯ ДЕМОНСТРАЦИЯ" << endl;
+    cout << "------------------------------------------------" << endl;
+
+    cout << "\nСоздаем новый лес и добавляем деревья:" << endl;
+    Forest* anotherForest = new Forest();
+
+    Tree* maple = new Tree(90, "Клен");
+    Tree* ash = new Tree(70, "Ясень");
+
+    anotherForest->addTree(maple);
+    anotherForest->addTree(ash);
+
+    cout << "\nСодержимое леса:" << endl;
+    anotherForest->displayForest();
+
+    cout << "\nУдаляем лес:" << endl;
+    delete anotherForest;
+
+    cout << "\nДеревья всё ещё существуют:" << endl;
+    cout << "   ";
+    maple->displayInfo();
+    cout << endl;
+    cout << "   ";
+    ash->displayInfo();
+    cout << endl;
+
+    cout << "\nОчищаем деревья:" << endl;
+    delete maple;
+    delete ash;
+
+    // ===== ОТВЕТЫ НА ВОПРОСЫ =====
+    cout << "\n\n================================================" << endl;
+    cout << "    ОТВЕТЫ НА ВОПРОСЫ" << endl;
+    cout << "================================================" << endl;
+
+    cout << "\nВОПРОС: Объяснить продолжительность жизни объектов" << endl;
+    cout << "в классе-контейнере при композиции и агрегации." << endl;
+    cout << "Учитывать ситуации по значению и указатели." << endl;
+    cout << "\n================================================" << endl;
+
+    cout << "\n📚 КОМПОЗИЦИЯ (COMPOSITION) - 'часть-целое', сильная связь:" << endl;
+    cout << "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" << endl;
+    cout << "• Объекты хранятся ПО ЗНАЧЕНИЮ (как поля или в векторе<объектов>)" << endl;
+    cout << "• Контейнер ВЛАДЕЕТ объектами" << endl;
+    cout << "• Время жизни объектов = время жизни контейнера" << endl;
+    cout << "• При создании контейнера создаются и объекты" << endl;
+    cout << "• При уничтожении контейнера уничтожаются и объекты" << endl;
+    cout << "• Объекты не могут существовать без контейнера" << endl;
+    cout << "• Пример: класс House и класс Room (комнаты не существуют без дома)" << endl;
+    cout << endl;
+    cout << "  Пример кода:" << endl;
+    cout << "  class House {" << endl;
+    cout << "      Room rooms[5];  // композиция - по значению" << endl;
+    cout << "  };" << endl;
+    cout << "  // При удалении House, удаляются и Room" << endl;
+
+    cout << "\n📎 АГРЕГАЦИЯ (AGGREGATION) - 'целое и часть', слабая связь:" << endl;
+    cout << "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" << endl;
+    cout << "• Объекты хранятся по УКАЗАТЕЛЯМ (или ссылкам)" << endl;
+    cout << "• Контейнер НЕ ВЛАДЕЕТ объектами" << endl;
+    cout << "• Объекты создаются ВНЕ контейнера" << endl;
+    cout << "• Время жизни объектов НЕ ЗАВИСИТ от контейнера" << endl;
+    cout << "• При уничтожении контейнера объекты продолжают существовать" << endl;
+    cout << "• Контейнер только использует объекты, но не управляет их памятью" << endl;
+    cout << "• Пример: класс University и класс Student (студенты существуют без вуза)" << endl;
+    cout << endl;
+    cout << "  Пример кода:" << endl;
+    cout << "  class University {" << endl;
+    cout << "      vector<Student*> students;  // агрегация - указатели" << endl;
+    cout << "  };" << endl;
+    cout << "  // При удалении University, Student продолжают существовать" << endl;
+
+    cout << "\n📊 СРАВНИТЕЛЬНАЯ ТАБЛИЦА:" << endl;
+    cout << "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" << endl;
+    cout << "Характеристика          | Композиция     | Агрегация" << endl;
+    cout << "────────────────────────┼────────────────┼────────────────" << endl;
+    cout << "Способ хранения         | По значению    | По указателю/ссылке" << endl;
+    cout << "Владеет ли контейнер?   | Да             | Нет" << endl;
+    cout << "Время жизни объектов    | Как у контейнера| Независимое" << endl;
+    cout << "Объекты могут существовать без контейнера? | Нет | Да" << endl;
+    cout << "Ответственность за память| Контейнер     | Внешний код" << endl;
+    cout << "Удаление контейнера     | Удаляет объекты| НЕ удаляет объекты" << endl;
+
+    cout << "\n⚠️ ВАЖНЫЕ МОМЕНТЫ:" << endl;
+    cout << "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" << endl;
+    cout << "1. При композиции (по значению):" << endl;
+    cout << "   - Объекты создаются автоматически в конструкторе" << endl;
+    cout << "   - Деструктор контейнера автоматически вызывает деструкторы объектов" << endl;
+    cout << "   - Нельзя случайно 'потерять' объекты или вызвать утечку памяти" << endl;
+    cout << endl;
+    cout << "2. При агрегации (по указателям):" << endl;
+    cout << "   - Нужно вручную управлять памятью (new/delete)" << endl;
+    cout << "   - Может возникнуть проблема 'висячих указателей' (dangling pointers)" << endl;
+    cout << "   - Контейнер не должен удалять объекты в своем деструкторе" << endl;
+    cout << "   - Объекты могут принадлежать нескольким контейнерам одновременно" << endl;
+    cout << endl;
+    cout << "3. Современные подходы:" << endl;
+    cout << "   - Для композиции: хранить объекты по значению" << endl;
+    cout << "   - Для агрегации: использовать shared_ptr для автоматического управления" << endl;
+    cout << "   - Для наблюдения: использовать weak_ptr (если нужно избежать циклических ссылок)" << endl;
+
+    cout << "\n✅ ВЫВОД из программы:" << endl;
+    cout << "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" << endl;
+    cout << "• В демонстрации выше лес хранил указатели на деревья (АГРЕГАЦИЯ)" << endl;
+    cout << "• После удаления леса деревья продолжили существовать" << endl;
+    cout << "• Деревья были удалены только после явного вызова delete" << endl;
+    cout << "• При композиции деревья были бы удалены автоматически" << endl;
 
     return 0;
 }

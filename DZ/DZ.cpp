@@ -1,115 +1,86 @@
 ﻿#include <iostream>
-#include <string>
 
 using namespace std;
 
-class BankAccount {
+//(работает)
+class Wallet {
 private:
-    string ownerName;
-    double balance;
+    unsigned int money;
 
 public:
-    // Конструктор
-    BankAccount(string ownerName, double balance) {
-        this->ownerName = ownerName;
-        this->balance = balance;
+    // Конструктор без explicit - позволяет неявное преобразование int -> Wallet
+    Wallet(unsigned int amount) {
+        money = amount;
+        cout << "Создан кошелек с деньгами: " << money << " руб." << endl;
     }
 
-    // Внести сумму
-    void deposit(double amount) {
-        if (amount > 0) {
-            this->balance += amount;
-            cout << "Внесено: " << amount << " руб." << endl;
-        }
-        else {
-            cout << "Сумма должна быть положительной!" << endl;
-        }
-    }
-
-    // Снять сумму - возвращает ссылку на текущий объект
-    BankAccount& withdraw(double amount) {
-        if (amount > 0 && amount <= this->balance) {
-            this->balance -= amount;
-            cout << "Снято: " << amount << " руб." << endl;
-        }
-        else if (amount > this->balance) {
-            cout << "Недостаточно средств! Доступно: " << this->balance << " руб." << endl;
-        }
-        else {
-            cout << "Сумма должна быть положительной!" << endl;
-        }
-        return *this;
-    }
-
-    // Вывод информации о счете
-    void displayInfo() const {
-        cout << "Владелец счета: " << ownerName << endl;
-        cout << "Текущий баланс: " << balance << " руб." << endl;
-        cout << "------------------------" << endl;
-    }
-
-    // Метод сравнения счетов (основное задание)
-    // Сравнивает текущий счет с другим счетом по балансу
-    void compareBalance(const BankAccount& other) const {
-        cout << "Сравнение счетов:" << endl;
-        cout << "  " << this->ownerName << ": " << this->balance << " руб." << endl;
-        cout << "  " << other.ownerName << ": " << other.balance << " руб." << endl;
-
-        if (this->balance > other.balance) {
-            cout << "Результат: У " << this->ownerName << " баланс больше на "
-                << (this->balance - other.balance) << " руб." << endl;
-        }
-        else if (this->balance < other.balance) {
-            cout << "Результат: У " << other.ownerName << " баланс больше на "
-                << (other.balance - this->balance) << " руб." << endl;
-        }
-        else {
-            cout << "Результат: Балансы равны!" << endl;
-        }
-        cout << "------------------------" << endl;
-    }
-
-    // Альтернативный вариант: метод, возвращающий результат сравнения
-    bool hasLargerBalance(const BankAccount& other) const {
-        return this->balance > other.balance;
+    unsigned int getMoney() const {
+        return money;
     }
 };
+
+// Функция оплаты
+void pay(Wallet wallet) {
+    cout << "Оплата прошла успешно! Сумма: " << wallet.getMoney() << " руб." << endl;
+}
+
+// ============================================
+// Раскомментируйте эту часть, чтобы проверить explicit
+// ============================================
+/*
+class Wallet {
+private:
+    unsigned int money;
+
+public:
+    // explicit запрещает неявное преобразование
+    explicit Wallet(unsigned int amount) {
+        money = amount;
+        cout << "Создан кошелек с деньгами: " << money << " руб." << endl;
+    }
+
+    unsigned int getMoney() const {
+        return money;
+    }
+};
+
+void pay(Wallet wallet) {
+    cout << "Оплата прошла успешно! Сумма: " << wallet.getMoney() << " руб." << endl;
+}
+*/
+// ============================================
 
 int main() {
     setlocale(LC_ALL, "Russian");
 
-    // Создание счетов
-    BankAccount account1("Иван Петров", 5000);
-    BankAccount account2("Мария Сидорова", 3000);
-    BankAccount account3("Алексей Иванов", 5000);
+    cout << "=== ВЕРСИЯ БЕЗ explicit ===" << endl;
+    cout << "Вызов pay(400):" << endl;
+    pay(400);  // 400 неявно преобразуется в Wallet(400)
 
-    cout << "=== ИНФОРМАЦИЯ О СЧЕТАХ ===" << endl;
-    account1.displayInfo();
-    account2.displayInfo();
-    account3.displayInfo();
+    cout << "\nВызов с явным созданием объекта:" << endl;
+    Wallet myWallet(1000);
+    pay(myWallet);
 
-    // Демонстрация работы методов управления счетом
-    cout << "=== ОПЕРАЦИИ СО СЧЕТАМИ ===" << endl;
-    account1.deposit(1500);
-    account1.displayInfo();
-
-    account2.withdraw(1000).withdraw(500); // цепочка вызовов (благодаря возврату ссылки)
-    account2.displayInfo();
-
-    // Демонстрация метода сравнения счетов
-    cout << "=== СРАВНЕНИЕ СЧЕТОВ ===" << endl;
-    account1.compareBalance(account2);
-    account2.compareBalance(account3);
-    account1.compareBalance(account3);
-
-    // Альтернативная демонстрация с возвратом bool
-    cout << "=== АЛЬТЕРНАТИВНОЕ СРАВНЕНИЕ (bool) ===" << endl;
-    if (account1.hasLargerBalance(account2)) {
-        cout << account1 << " имеет больший баланс, чем " << account2 << endl;
-    }
-    else {
-        cout << "У " << account1 << " баланс не больше, чем у " << account2 << endl;
-    }
+    cout << "\n========================================" << endl;
+    cout << "ОПИСАНИЕ ОШИБКИ ПРИ explicit:" << endl;
+    cout << "========================================" << endl;
+    cout << "При добавлении explicit к конструктору:" << endl;
+    cout << "explicit Wallet(unsigned int amount)" << endl;
+    cout << endl;
+    cout << "Ошибка Visual Studio будет выглядеть так:" << endl;
+    cout << "\"error C2664: 'void pay(Wallet)': cannot convert argument 1 from 'int' to 'Wallet'\"" << endl;
+    cout << endl;
+    cout << "Текст ошибки:" << endl;
+    cout << "------------------------" << endl;
+    cout << "E0415   не существует подходящей функции для преобразования \"int\" в \"Wallet\"" << endl;
+    cout << "C2664   'void pay(Wallet)': невозможно преобразовать аргумент 1 из 'int' в 'Wallet'" << endl;
+    cout << "------------------------" << endl;
+    cout << endl;
+    cout << "Почему возникает ошибка:" << endl;
+    cout << "1. Конструктор помечен как explicit, что запрещает неявные преобразования." << endl;
+    cout << "2. Функция pay() ожидает объект типа Wallet, но получает int (400)." << endl;
+    cout << "3. Компилятор не может автоматически создать Wallet из int." << endl;
+    cout << "4. Нужно явно вызвать конструктор: pay(Wallet(400))" << endl;
 
     return 0;
 }

@@ -1,162 +1,223 @@
 ﻿#include <iostream>
-#include <future>
-#include <chrono>
-#include <thread>
 #include <vector>
-#include <atomic>
-#include <iomanip>
-#include <mutex>
+#include <memory>
+#include <string>
 
 using namespace std;
-using namespace chrono;
 
-// Структура для хранения информации о файле
-struct FileInfo {
-    int id;
-    int downloadTime;
-    int progress;
-    bool completed;
-    string name;
+// Базовый абстрактный класс для всех устройств
+class SmartDevice {
+public:
+    virtual ~SmartDevice() = default;
+    virtual void TurnOn() = 0;
+    virtual void TurnOff() = 0;
+    virtual string getDeviceName() const = 0;
+};
 
-    FileInfo(int i, int time) : id(i), downloadTime(time), progress(0), completed(false) {
-        name = "Файл_" + to_string(id) + ".dat";
+// Класс Light (свет)
+class Light : public SmartDevice {
+private:
+    string location;
+    int brightness;
+
+public:
+    Light(const string& loc = "Комната") : location(loc), brightness(0) {}
+
+    void TurnOn() override {
+        brightness = 100;
+        cout << "💡 " << location << ": Свет включен. Яркость: " << brightness << "%" << endl;
+    }
+
+    void TurnOff() override {
+        brightness = 0;
+        cout << "💡 " << location << ": Свет выключен" << endl;
+    }
+
+    string getDeviceName() const override {
+        return "Свет в " + location;
     }
 };
 
-// Глобальные переменные для отслеживания прогресса
-vector<FileInfo> files;
-mutex progressMutex;
+// Класс Thermostat (термостат)
+class Thermostat : public SmartDevice {
+private:
+    int temperature;
+    string mode;
 
-// Функция загрузки файла с обновлением прогресса
-string downloadFileWithProgress(int fileNumber, int downloadTime) {
-    for (int progress = 10; progress <= 100; progress += 10) {
-        this_thread::sleep_for(milliseconds(downloadTime / 10));
+public:
+    Thermostat() : temperature(20), mode("OFF") {}
 
-        // Обновляем прогресс в общем списке
-        {
-            lock_guard<mutex> lock(progressMutex);
-            for (auto& file : files) {
-                if (file.id == fileNumber) {
-                    file.progress = progress;
-                    if (progress == 100) {
-                        file.completed = true;
-                    }
-                    break;
-                }
-            }
-        }
+    void TurnOn() override {
+        temperature = 22;
+        mode = "HEATING";
+        cout << "🌡️ Термостат: Включен. Температура установлена на " << temperature << "°C. Режим: " << mode << endl;
     }
 
-    return "Файл " + to_string(fileNumber) + " (" + to_string(downloadTime / 100) + " MB)";
-}
-
-// Функция для отображения текущего прогресса
-void displayProgress() {
-    lock_guard<mutex> lock(progressMutex);
-    cout << "\r";
-    for (const auto& file : files) {
-        if (file.completed) {
-            cout << "✅ " << file.name << ": 100%   ";
-        }
-        else {
-            cout << "📥 " << file.name << ": " << setw(3) << file.progress << "%   ";
-        }
+    void TurnOff() override {
+        temperature = 15;
+        mode = "OFF";
+        cout << "🌡️ Термостат: Выключен. Температура: " << temperature << "°C. Режим: " << mode << endl;
     }
-    cout << flush;
-}
+
+    string getDeviceName() const override {
+        return "Термостат";
+    }
+};
+
+// Класс Radio (радио)
+class Radio : public SmartDevice {
+private:
+    double frequency;
+    string station;
+    int volume;
+
+public:
+    Radio() : frequency(98.7), station("Europe Plus"), volume(0) {}
+
+    void TurnOn() override {
+        volume = 30;
+        cout << "📻 Радио: Включено. Станция: " << station << " (" << frequency << " FM). Громкость: " << volume << "%" << endl;
+    }
+
+    void TurnOff() override {
+        volume = 0;
+        cout << "📻 Радио: Выключено" << endl;
+    }
+
+    string getDeviceName() const override {
+        return "Радио";
+    }
+};
+
+// Класс SmartHome (умный дом) - класс-контейнер
+class SmartHome {
+private:
+    vector<unique_ptr<SmartDevice>> devices;
+    bool nightMode;
+
+public:
+    SmartHome() : nightMode(false) {
+        cout << "🏠 Система 'Умный дом' инициализирована" << endl;
+        cout << "========================================" << endl;
+    }
+
+    // Добавление устройства в дом
+    void addDevice(unique_ptr<SmartDevice> device) {
+        cout << "➕ Добавлено устройство: " << device->getDeviceName() << endl;
+        devices.push_back(move(device));
+    }
+
+    // Включение ночного режима
+    void EnableNightMode() {
+        if (nightMode) {
+            cout << "🌙 Ночной режим уже активен!" << endl;
+            return;
+        }
+
+        nightMode = true;
+        cout << "\n🌙 ВКЛЮЧЕНИЕ НОЧНОГО РЕЖИМА" << endl;
+        cout << "----------------------------------------" << endl;
+
+        for (auto& device : devices) {
+            device->TurnOn();
+        }
+
+        cout << "----------------------------------------" << endl;
+        cout << "✅ Ночной режим активирован" << endl << endl;
+    }
+
+    // Выключение ночного режима
+    void DisableNightMode() {
+        if (!nightMode) {
+            cout << "☀️ Ночной режим уже выключен!" << endl;
+            return;
+        }
+
+        nightMode = false;
+        cout << "\n☀️ ВЫКЛЮЧЕНИЕ НОЧНОГО РЕЖИМА" << endl;
+        cout << "----------------------------------------" << endl;
+
+        for (auto& device : devices) {
+            device->TurnOff();
+        }
+
+        cout << "----------------------------------------" << endl;
+        cout << "✅ Ночной режим деактивирован" << endl << endl;
+    }
+
+    // Показать статус всех устройств (дополнительный метод для демонстрации)
+    void ShowStatus() {
+        cout << "\n📊 ТЕКУЩИЙ СТАТУС УСТРОЙСТВ:" << endl;
+        cout << "----------------------------------------" << endl;
+        cout << "Режим: " << (nightMode ? "🌙 Ночной" : "☀️ Дневной") << endl;
+        cout << "Количество устройств: " << devices.size() << endl;
+        cout << "----------------------------------------" << endl;
+    }
+
+    // Получить статус ночного режима
+    bool isNightMode() const {
+        return nightMode;
+    }
+};
 
 int main() {
     setlocale(LC_ALL, "Russian");
 
-    cout << "═══════════════════════════════════════════════════════════" << endl;
-    cout << "           СИМУЛЯТОР ПАРАЛЛЕЛЬНОЙ ЗАГРУЗКИ ФАЙЛОВ          " << endl;
-    cout << "═══════════════════════════════════════════════════════════" << endl;
-    cout << endl;
+    cout << "========================================" << endl;
+    cout << "      СИСТЕМА 'УМНЫЙ ДОМ' v1.0" << endl;
+    cout << "========================================" << endl << endl;
 
-    // Инициализация файлов со случайным временем загрузки
-    random_device rd;
-    mt19937 gen(rd());
-    uniform_int_distribution<> dist(3000, 7000);
+    // Создаем умный дом
+    SmartHome myHome;
 
-    files.emplace_back(1, dist(gen));
-    files.emplace_back(2, dist(gen));
-    files.emplace_back(3, dist(gen));
+    // Добавляем устройства
+    cout << "\n📦 УСТАНОВКА УСТРОЙСТВ:" << endl;
+    cout << "----------------------------------------" << endl;
 
-    cout << "📋 Информация о файлах:" << endl;
-    for (const auto& file : files) {
-        cout << "   " << file.name << " - " << file.downloadTime / 1000.0 << " сек." << endl;
-    }
-    cout << endl;
+    myHome.addDevice(make_unique<Light>("Гостиная"));
+    myHome.addDevice(make_unique<Light>("Спальня"));
+    myHome.addDevice(make_unique<Light>("Кухня"));
+    myHome.addDevice(make_unique<Thermostat>());
+    myHome.addDevice(make_unique<Radio>());
 
-    cout << "🚀 Запуск асинхронной загрузки (std::async)..." << endl;
-    cout << "💡 Основной поток НЕ ЗАБЛОКИРОВАН и может выполнять другие задачи" << endl;
-    cout << endl;
+    cout << "----------------------------------------" << endl;
+    cout << "✅ Все устройства установлены" << endl << endl;
 
-    auto startTime = steady_clock::now();
+    // Демонстрация работы
+    cout << "========================================" << endl;
+    cout << "        ДЕМОНСТРАЦИЯ РАБОТЫ" << endl;
+    cout << "========================================" << endl;
 
-    // Запускаем асинхронные задачи
-    future<string> future1 = async(launch::async, downloadFileWithProgress, 1, files[0].downloadTime);
-    future<string> future2 = async(launch::async, downloadFileWithProgress, 2, files[1].downloadTime);
-    future<string> future3 = async(launch::async, downloadFileWithProgress, 3, files[2].downloadTime);
+    // Показываем начальный статус
+    myHome.ShowStatus();
 
-    // Основной поток: выводим прогресс каждые 0.5 секунды
-    cout << "📊 Прогресс загрузки:" << endl;
+    // Включаем ночной режим
+    cout << "\n🎬 ДЕЙСТВИЕ: Включение ночного режима" << endl;
+    myHome.EnableNightMode();
 
-    bool allCompleted = false;
-    int counter = 0;
+    // Небольшая пауза (имитация работы)
+    cout << "💤 Ночь прошла спокойно..." << endl << endl;
 
-    while (!allCompleted) {
-        // Проверяем статус всех задач
-        bool done1 = future1.wait_for(milliseconds(0)) == future_status::ready;
-        bool done2 = future2.wait_for(milliseconds(0)) == future_status::ready;
-        bool done3 = future3.wait_for(milliseconds(0)) == future_status::ready;
-        allCompleted = done1 && done2 && done3;
+    // Выключаем ночной режим
+    cout << "🎬 ДЕЙСТВИЕ: Выключение ночного режима" << endl;
+    myHome.DisableNightMode();
 
-        // Обновляем отображение прогресса
-        displayProgress();
+    // Показываем финальный статус
+    myHome.ShowStatus();
 
-        if (!allCompleted) {
-            // Каждые 2 секунды выводим дополнительное сообщение о том, что поток не заблокирован
-            if (counter % 4 == 0 && counter > 0) {
-                cout << "\n💬 [Основной поток активен] Выполняем фоновые задачи..." << string(30, ' ') << endl;
-                cout << "📊 Прогресс загрузки:" << endl;
-            }
-            this_thread::sleep_for(milliseconds(500));
-            counter++;
-        }
-    }
+    // Дополнительная демонстрация: повторное включение/выключение
+    cout << "\n🔄 ДОПОЛНИТЕЛЬНЫЕ ТЕСТЫ:" << endl;
+    cout << "========================================" << endl;
 
-    cout << "\n\n✅ ЗАГРУЗКА ЗАВЕРШЕНА!" << endl << endl;
+    cout << "\n▶ Попытка включить ночной режим повторно:" << endl;
+    myHome.EnableNightMode();
 
-    // Получаем результаты
-    string result1 = future1.get();
-    string result2 = future2.get();
-    string result3 = future3.get();
+    cout << "\n▶ Попытка выключить ночной режим повторно:" << endl;
+    myHome.DisableNightMode();
 
-    auto endTime = steady_clock::now();
-    auto totalTime = duration_cast<milliseconds>(endTime - startTime);
-
-    cout << "═══════════════════════════════════════════════════════════" << endl;
-    cout << "📦 РЕЗУЛЬТАТЫ ЗАГРУЗКИ:" << endl;
-    cout << "   " << result1 << endl;
-    cout << "   " << result2 << endl;
-    cout << "   " << result3 << endl;
-    cout << endl;
-    cout << "⏱️  ОБЩЕЕ ВРЕМЯ ЗАГРУЗКИ: " << fixed << setprecision(2)
-        << totalTime.count() / 1000.0 << " секунд" << endl;
-
-    // Статистика
-    int maxTime = max({ files[0].downloadTime, files[1].downloadTime, files[2].downloadTime });
-    cout << endl;
-    cout << "📈 СТАТИСТИКА:" << endl;
-    cout << "   Самый долгий файл: " << maxTime / 1000.0 << " сек." << endl;
-    cout << "   Общее время загрузки (параллельно): " << totalTime.count() / 1000.0 << " сек." << endl;
-    cout << "   Время при последовательной загрузке: " << (files[0].downloadTime + files[1].downloadTime + files[2].downloadTime) / 1000.0 << " сек." << endl;
-    cout << "   ⚡ Ускорение: " << fixed << setprecision(2)
-        << (files[0].downloadTime + files[1].downloadTime + files[2].downloadTime) / (double)maxTime << "x" << endl;
-
-    cout << endl;
-    cout << "═══════════════════════════════════════════════════════════" << endl;
+    cout << "\n========================================" << endl;
+    cout << "      ПРОГРАММА ЗАВЕРШЕНА" << endl;
+    cout << "========================================" << endl;
 
     return 0;
 }

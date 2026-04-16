@@ -1,143 +1,94 @@
 ﻿#include <iostream>
-#include <iomanip>
+#include <string>
 
 using namespace std;
 
-class Time {
+// Шаблонный класс Box (коробка)
+template <typename T>
+class Box {
 private:
-    int hours;
-    int minutes;
-
-    // Вспомогательный метод для нормализации времени (приведение минут к часам)
-    void normalize() {
-        if (minutes >= 60) {
-            hours += minutes / 60;
-            minutes %= 60;
-        }
-        else if (minutes < 0) {
-            // На случай отрицательных минут (необязательно для данной задачи)
-            int extraHours = minutes / 60;
-            hours += extraHours;
-            minutes %= 60;
-            if (minutes < 0) {
-                minutes += 60;
-                hours--;
-            }
-        }
-
-        // Часы могут быть любыми (не ограничиваем 24, т.к. не сказано в задании)
-        // При желании можно добавить hours %= 24 для 24-часового формата
-    }
+    T item;  // Приватная переменная типа T
 
 public:
-    // Конструкторы
-    Time() : hours(0), minutes(0) {}
-
-    Time(int h, int m) : hours(h), minutes(m) {
-        normalize();
+    // Конструктор для инициализации
+    Box(const T& value) : item(value) {
+        cout << "Создана коробка с элементом!" << endl;
     }
 
-    // Геттеры
-    int getHours() const { return hours; }
-    int getMinutes() const { return minutes; }
+    // Конструктор по умолчанию
+    Box() : item() {}
 
-    // Перегрузка оператора '+'
-    Time operator+(const Time& other) const {
-        Time result;
-        result.hours = this->hours + other.hours;
-        result.minutes = this->minutes + other.minutes;
-        result.normalize();
-        return result;
+    // Set метод - устанавливает значение
+    void setItem(const T& value) {
+        item = value;
     }
 
-    // Перегрузка оператора '=='
-    bool operator==(const Time& other) const {
-        // Приводим оба времени к общему знаменателю (минутам от начала)
-        // Или просто сравниваем часы и минуты
-        return (this->hours == other.hours) && (this->minutes == other.minutes);
+    // Get метод - возвращает значение
+    T getItem() const {
+        return item;
     }
 
-    // Дружественная функция для перегрузки оператора '<<'
-    friend ostream& operator<<(ostream& os, const Time& t);
+    // Метод для вывода информации (демонстрационный)
+    void display() const {
+        cout << "Коробка содержит: " << item << endl;
+    }
 };
-
-// Перегрузка оператора вывода '<<'
-ostream& operator<<(ostream& os, const Time& t) {
-    // Выводим часы и минуты с ведущими нулями (формат ЧЧ:ММ)
-    os << setw(2) << setfill('0') << t.hours << ":"
-        << setw(2) << setfill('0') << t.minutes;
-    return os;
-}
 
 int main() {
     setlocale(LC_ALL, "Russian");
 
-    cout << "=== ДЕМОНСТРАЦИЯ РАБОТЫ КЛАССА Time ===" << endl;
+    cout << "=== ДЕМОНСТРАЦИЯ РАБОТЫ ШАБЛОННОГО КЛАССА BOX ===" << endl;
     cout << endl;
 
-    // Создание объектов времени
-    Time t1(2, 45);      // 2 часа 45 минут
-    Time t2(1, 30);      // 1 час 30 минут
-    Time t3(3, 45);      // 3 часа 45 минут
-    Time t4(2, 45);      // 2 часа 45 минут (такое же как t1)
-
-    // Вывод времени с помощью оператора '<<'
-    cout << "Время t1: " << t1 << endl;
-    cout << "Время t2: " << t2 << endl;
-    cout << "Время t3: " << t3 << endl;
-    cout << "Время t4: " << t4 << endl;
+    // 1. Коробка с типом int
+    cout << "--- Коробка с типом int ---" << endl;
+    Box<int> intBox(42);
+    intBox.display();
+    cout << "Получение значения через getItem(): " << intBox.getItem() << endl;
+    intBox.setItem(100);
+    cout << "После setItem(100): " << intBox.getItem() << endl;
     cout << endl;
 
-    // Демонстрация оператора '+'
-    cout << "=== ОПЕРАТОР '+' ===" << endl;
-    Time sum1 = t1 + t2;
-    cout << t1 << " + " << t2 << " = " << sum1 << endl;
-
-    Time sum2 = t2 + t3;
-    cout << t2 << " + " << t3 << " = " << sum2 << endl;
-
-    // Проверка преобразования минут в часы
-    Time t5(0, 45);      // 0 часов 45 минут
-    Time t6(0, 35);      // 0 часов 35 минут
-    Time sum3 = t5 + t6;
-    cout << t5 << " + " << t6 << " = " << sum3 << " (проверка: 45+35=80 минут = 1 час 20 минут)" << endl;
-
-    Time t7(5, 50);      // 5 часов 50 минут
-    Time t8(0, 30);      // 0 часов 30 минут
-    Time sum4 = t7 + t8;
-    cout << t7 << " + " << t8 << " = " << sum4 << " (проверка: 5:50 + 30 минут = 6:20)" << endl;
+    // 2. Коробка с типом double
+    cout << "--- Коробка с типом double ---" << endl;
+    Box<double> doubleBox(3.14159);
+    doubleBox.display();
+    cout << "Получение значения через getItem(): " << doubleBox.getItem() << endl;
+    doubleBox.setItem(2.71828);
+    cout << "После setItem(2.71828): " << doubleBox.getItem() << endl;
     cout << endl;
 
-    // Демонстрация оператора '=='
-    cout << "=== ОПЕРАТОР '==' ===" << endl;
-    cout << t1 << " == " << t2 << " ? " << (t1 == t2 ? "Да" : "Нет") << endl;
-    cout << t1 << " == " << t3 << " ? " << (t1 == t3 ? "Да" : "Нет") << endl;
-    cout << t1 << " == " << t4 << " ? " << (t1 == t4 ? "Да" : "Нет") << endl;
-    cout << t2 << " == " << t3 << " ? " << (t2 == t3 ? "Да" : "Нет") << endl;
+    // 3. Коробка с типом string
+    cout << "--- Коробка с типом string ---" << endl;
+    Box<string> stringBox("Привет, мир!");
+    stringBox.display();
+    cout << "Получение значения через getItem(): " << stringBox.getItem() << endl;
+    stringBox.setItem("C++ шаблоны");
+    cout << "После setItem(\"C++ шаблоны\"): " << stringBox.getItem() << endl;
     cout << endl;
 
-    // Дополнительные тесты
-    cout << "=== ДОПОЛНИТЕЛЬНЫЕ ТЕСТЫ ===" << endl;
+    // 4. Дополнительная демонстрация - создание коробки без начального значения
+    cout << "--- Коробка с типом char (создана без начального значения) ---" << endl;
+    Box<char> charBox;
+    charBox.setItem('A');
+    charBox.display();
+    cout << endl;
 
-    // Сложение трех объектов
-    Time t9(0, 50);
-    Time t10(0, 40);
-    Time t11(0, 30);
-    Time sum5 = t9 + t10 + t11;
-    cout << t9 << " + " << t10 << " + " << t11 << " = " << sum5
-        << " (50+40+30=120 минут = 2 часа)" << endl;
+    // 5. Коробка с типом float
+    cout << "--- Коробка с типом float ---" << endl;
+    Box<float> floatBox(9.99f);
+    floatBox.display();
+    cout << endl;
 
-    // Сложение с большим количеством часов
-    Time t12(23, 50);
-    Time t13(1, 20);
-    Time sum6 = t12 + t13;
-    cout << t12 << " + " << t13 << " = " << sum6 << " (24 часа 70 минут = 25 часов 10 минут)" << endl;
+    // 6. Демонстрация работы с несколькими коробками одновременно
+    cout << "--- Работа с несколькими коробками ---" << endl;
+    Box<int> box1(10);
+    Box<double> box2(20.5);
+    Box<string> box3("Тест");
 
-    // Проверка на граничных значениях
-    Time t14(0, 59);
-    Time t15(0, 1);
-    Time sum7 = t14 + t15;
-    cout << t14 << " + " << t15 << " = " << sum7 << " (59+1=60 минут = 1 час)" << endl;
+    cout << "box1: " << box1.getItem() << endl;
+    cout << "box2: " << box2.getItem() << endl;
+    cout << "box3: " << box3.getItem() << endl;
 
     return 0;
 }

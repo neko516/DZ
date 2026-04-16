@@ -1,121 +1,162 @@
 ﻿#include <iostream>
-#include <string>
+#include <future>
+#include <chrono>
+#include <thread>
+#include <vector>
+#include <atomic>
+#include <iomanip>
+#include <mutex>
 
 using namespace std;
+using namespace chrono;
+
+// Структура для хранения информации о файле
+struct FileInfo {
+    int id;
+    int downloadTime;
+    int progress;
+    bool completed;
+    string name;
+
+    FileInfo(int i, int time) : id(i), downloadTime(time), progress(0), completed(false) {
+        name = "Файл_" + to_string(id) + ".dat";
+    }
+};
+
+// Глобальные переменные для отслеживания прогресса
+vector<FileInfo> files;
+mutex progressMutex;
+
+// Функция загрузки файла с обновлением прогресса
+string downloadFileWithProgress(int fileNumber, int downloadTime) {
+    for (int progress = 10; progress <= 100; progress += 10) {
+        this_thread::sleep_for(milliseconds(downloadTime / 10));
+
+        // Обновляем прогресс в общем списке
+        {
+            lock_guard<mutex> lock(progressMutex);
+            for (auto& file : files) {
+                if (file.id == fileNumber) {
+                    file.progress = progress;
+                    if (progress == 100) {
+                        file.completed = true;
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+    return "Файл " + to_string(fileNumber) + " (" + to_string(downloadTime / 100) + " MB)";
+}
+
+// Функция для отображения текущего прогресса
+void displayProgress() {
+    lock_guard<mutex> lock(progressMutex);
+    cout << "\r";
+    for (const auto& file : files) {
+        if (file.completed) {
+            cout << "✅ " << file.name << ": 100%   ";
+        }
+        else {
+            cout << "📥 " << file.name << ": " << setw(3) << file.progress << "%   ";
+        }
+    }
+    cout << flush;
+}
 
 int main() {
     setlocale(LC_ALL, "Russian");
 
-    cout << "=== ДЕМОНСТРАЦИЯ ТРЁХ СПОСОБОВ ИНИЦИАЛИЗАЦИИ INT ИЗ DOUBLE ===" << endl;
+    cout << "═══════════════════════════════════════════════════════════" << endl;
+    cout << "           СИМУЛЯТОР ПАРАЛЛЕЛЬНОЙ ЗАГРУЗКИ ФАЙЛОВ          " << endl;
+    cout << "═══════════════════════════════════════════════════════════" << endl;
     cout << endl;
 
-    double doubleValue = 3.14159;
+    // Инициализация файлов со случайным временем загрузки
+    random_device rd;
+    mt19937 gen(rd());
+    uniform_int_distribution<> dist(3000, 7000);
 
-    // 1. Инициализация через копирование (copy initialization) - с использованием '='
-    cout << "1. Инициализация через копирование (copy initialization):" << endl;
-    int copyInit = doubleValue;
-    cout << "   doubleValue = " << doubleValue << endl;
-    cout << "   int copyInit = doubleValue; -> copyInit = " << copyInit << endl;
-    cout << "   Результат: дробная часть отброшена (3)" << endl;
-    cout << "   Уровень предупреждения: компилятор может выдать warning C4244" << endl;
+    files.emplace_back(1, dist(gen));
+    files.emplace_back(2, dist(gen));
+    files.emplace_back(3, dist(gen));
+
+    cout << "📋 Информация о файлах:" << endl;
+    for (const auto& file : files) {
+        cout << "   " << file.name << " - " << file.downloadTime / 1000.0 << " сек." << endl;
+    }
     cout << endl;
 
-    // 2. Инициализация через прямую инициализацию (direct initialization) - с использованием '()'
-    cout << "2. Прямая инициализация (direct initialization):" << endl;
-    int directInit(doubleValue);
-    cout << "   doubleValue = " << doubleValue << endl;
-    cout << "   int directInit(doubleValue); -> directInit = " << directInit << endl;
-    cout << "   Результат: дробная часть отброшена (3)" << endl;
-    cout << "   Уровень предупреждения: компилятор может выдать warning C4244" << endl;
+    cout << "🚀 Запуск асинхронной загрузки (std::async)..." << endl;
+    cout << "💡 Основной поток НЕ ЗАБЛОКИРОВАН и может выполнять другие задачи" << endl;
     cout << endl;
 
-    // 3. Инициализация через унифицированную инициализацию (uniform initialization) - с использованием '{}'
-    cout << "3. Унифицированная инициализация (uniform initialization с фигурными скобками):" << endl;
-    cout << "   doubleValue = " << doubleValue << endl;
-    // int uniformInit{ doubleValue }; // ЭТА СТРОКА ВЫЗОВЕТ ОШИБКУ КОМПИЛЯЦИИ!
-    // Для демонстрации закомментируем, чтобы программа скомпилировалась:
-    cout << "   int uniformInit{ doubleValue }; // !!! ОШИБКА КОМПИЛЯЦИИ !!!" << endl;
-    cout << "   Компилятор выдаёт: error C2397: преобразование из 'double' в 'int' требует сужающего преобразования" << endl;
-    cout << endl;
+    auto startTime = steady_clock::now();
 
-    // Альтернатива: если всё же нужно скомпилировать с фигурными скобками, 
-    // нужно явное приведение типа:
-    int uniformInitExplicit{ static_cast<int>(doubleValue) };
-    cout << "   (Рабочий вариант с явным приведением типа):" << endl;
-    cout << "   int uniformInitExplicit{ static_cast<int>(doubleValue) }; -> uniformInitExplicit = " << uniformInitExplicit << endl;
-    cout << endl;
+    // Запускаем асинхронные задачи
+    future<string> future1 = async(launch::async, downloadFileWithProgress, 1, files[0].downloadTime);
+    future<string> future2 = async(launch::async, downloadFileWithProgress, 2, files[1].downloadTime);
+    future<string> future3 = async(launch::async, downloadFileWithProgress, 3, files[2].downloadTime);
 
-    // Дополнительная демонстрация с разными значениями
-    cout << "=== ДОПОЛНИТЕЛЬНЫЕ ТЕСТЫ ===" << endl;
-    cout << endl;
+    // Основной поток: выводим прогресс каждые 0.5 секунды
+    cout << "📊 Прогресс загрузки:" << endl;
 
-    double testValues[] = { 2.1, 2.5, 2.9, -1.7, 123.456 };
+    bool allCompleted = false;
+    int counter = 0;
 
-    for (double val : testValues) {
-        cout << "double = " << val << " -> ";
-        int copy = val;
-        int direct(val);
-        // int uniform{ val }; // ОШИБКА!
-        cout << "copy = " << copy << ", direct = " << direct;
-        cout << " (дробная часть отбрасывается, а не округляется!)" << endl;
+    while (!allCompleted) {
+        // Проверяем статус всех задач
+        bool done1 = future1.wait_for(milliseconds(0)) == future_status::ready;
+        bool done2 = future2.wait_for(milliseconds(0)) == future_status::ready;
+        bool done3 = future3.wait_for(milliseconds(0)) == future_status::ready;
+        allCompleted = done1 && done2 && done3;
+
+        // Обновляем отображение прогресса
+        displayProgress();
+
+        if (!allCompleted) {
+            // Каждые 2 секунды выводим дополнительное сообщение о том, что поток не заблокирован
+            if (counter % 4 == 0 && counter > 0) {
+                cout << "\n💬 [Основной поток активен] Выполняем фоновые задачи..." << string(30, ' ') << endl;
+                cout << "📊 Прогресс загрузки:" << endl;
+            }
+            this_thread::sleep_for(milliseconds(500));
+            counter++;
+        }
     }
 
-    cout << endl;
-    cout << "=== ОТВЕТЫ НА ВОПРОСЫ ===" << endl;
-    cout << endl;
+    cout << "\n\n✅ ЗАГРУЗКА ЗАВЕРШЕНА!" << endl << endl;
 
-    cout << "ВОПРОС 1: Почему инициализация через фигурные скобки более безопасна?" << endl;
-    cout << "--------------------------------------------------------------------------------" << endl;
-    cout << "Инициализация через фигурные скобки (uniform initialization) более безопасна," << endl;
-    cout << "потому что она ЗАПРЕЩАЕТ сужающие преобразования (narrowing conversions)." << endl;
-    cout << endl;
-    cout << "Сужающее преобразование — это когда при присваивании теряется точность или" << endl;
-    cout << "значение может выйти за допустимые пределы. Примеры:" << endl;
-    cout << "  - double → int (теряется дробная часть)" << endl;
-    cout << "  - long long → int (выход за пределы)" << endl;
-    cout << "  - int → char (потеря старших битов)" << endl;
-    cout << endl;
-    cout << "При использовании {} компилятор выдаёт ОШИБКУ, а не просто предупреждение," << endl;
-    cout << "что заставляет программиста явно указать намерение через static_cast<>()." << endl;
-    cout << endl;
-    cout << "Сравнение:" << endl;
-    cout << "  int a = 3.14;      // OK (только warning) - потеря данных" << endl;
-    cout << "  int b(3.14);       // OK (только warning) - потеря данных" << endl;
-    cout << "  int c{3.14};       // ОШИБКА компиляции - запрещено!" << endl;
-    cout << endl;
+    // Получаем результаты
+    string result1 = future1.get();
+    string result2 = future2.get();
+    string result3 = future3.get();
 
-    cout << "ВОПРОС 2: В каком случае компилятор обязан выдать ошибку или предупреждение согласно заданию?" << endl;
-    cout << "--------------------------------------------------------------------------------" << endl;
-    cout << "Компилятор ОБЯЗАН выдать ошибку или предупреждение в следующих случаях:" << endl;
-    cout << endl;
-    cout << "1. Согласно заданию (и стандарту C++11 и новее):" << endl;
-    cout << "   - При использовании uniform initialization { } для сужающего преобразования" << endl;
-    cout << "     компилятор ОБЯЗАН выдать ОШИБКУ (диагностическое сообщение)." << endl;
-    cout << "     Пример: int x{ 3.14 }; // error: narrowing conversion" << endl;
-    cout << endl;
-    cout << "2. Для других способов инициализации (= и ()):" << endl;
-    cout << "   - Компилятор может выдать ПРЕДУПРЕЖДЕНИЕ (warning), но не обязан." << endl;
-    cout << "   - В Visual Studio это warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data" << endl;
-    cout << "   - В GCC это warning: conversion from 'double' to 'int' changes value" << endl;
-    cout << endl;
-    cout << "3. Строгие настройки компилятора:" << endl;
-    cout << "   - С флагом /WX в MSVC (трактовать warnings как errors) или -Werror в GCC" << endl;
-    cout << "     обычные предупреждения становятся ошибками." << endl;
-    cout << "   - С флагами /permissive- или -pedantic-errors дополнительные проверки." << endl;
-    cout << endl;
+    auto endTime = steady_clock::now();
+    auto totalTime = duration_cast<milliseconds>(endTime - startTime);
 
-    cout << "=== ДОПОЛНИТЕЛЬНАЯ ИНФОРМАЦИЯ ===" << endl;
-    cout << "--------------------------------------------------------------------------------" << endl;
-    cout << "Почему double → int теряет данные?" << endl;
-    cout << "  double хранит число с плавающей точкой (8 байт)." << endl;
-    cout << "  int хранит целое число (4 байта)." << endl;
-    cout << "  При преобразовании отбрасывается дробная часть, что приводит к потере точности." << endl;
+    cout << "═══════════════════════════════════════════════════════════" << endl;
+    cout << "📦 РЕЗУЛЬТАТЫ ЗАГРУЗКИ:" << endl;
+    cout << "   " << result1 << endl;
+    cout << "   " << result2 << endl;
+    cout << "   " << result3 << endl;
     cout << endl;
-    cout << "Что делать, если нужно преобразование с округлением?" << endl;
-    cout << "  int rounded = static_cast<int>(std::round(doubleValue));" << endl;
-    cout << "  int floor = static_cast<int>(std::floor(doubleValue));" << endl;
-    cout << "  int ceil = static_cast<int>(std::ceil(doubleValue));" << endl;
+    cout << "⏱️  ОБЩЕЕ ВРЕМЯ ЗАГРУЗКИ: " << fixed << setprecision(2)
+        << totalTime.count() / 1000.0 << " секунд" << endl;
+
+    // Статистика
+    int maxTime = max({ files[0].downloadTime, files[1].downloadTime, files[2].downloadTime });
     cout << endl;
+    cout << "📈 СТАТИСТИКА:" << endl;
+    cout << "   Самый долгий файл: " << maxTime / 1000.0 << " сек." << endl;
+    cout << "   Общее время загрузки (параллельно): " << totalTime.count() / 1000.0 << " сек." << endl;
+    cout << "   Время при последовательной загрузке: " << (files[0].downloadTime + files[1].downloadTime + files[2].downloadTime) / 1000.0 << " сек." << endl;
+    cout << "   ⚡ Ускорение: " << fixed << setprecision(2)
+        << (files[0].downloadTime + files[1].downloadTime + files[2].downloadTime) / (double)maxTime << "x" << endl;
+
+    cout << endl;
+    cout << "═══════════════════════════════════════════════════════════" << endl;
 
     return 0;
 }

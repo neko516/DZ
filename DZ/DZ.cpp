@@ -1,107 +1,230 @@
 ﻿#include <iostream>
 #include <string>
+#include <random>
+#include <stdexcept>
+#include <limits>
 
 using namespace std;
 
-// Шаблонная функция для обмена значениями двух переменных
-template <typename T>
-void swapValues(T& a, T& b) {
-    T temp = a;
-    a = b;
-    b = temp;
+// Класс для исключения "нехватка денег"
+class InsufficientFundsException : public exception {
+private:
+    string message;
+public:
+    InsufficientFundsException(double required, double given) {
+        message = "Недостаточно средств! Требуется: " + to_string(required) +
+            " руб. Внесено: " + to_string(given) + " руб.";
+    }
+    const char* what() const noexcept override {
+        return message.c_str();
+    }
+};
+
+// Класс для исключения "некорректный номер напитка"
+class InvalidDrinkException : public exception {
+public:
+    const char* what() const noexcept override {
+        return "Ошибка: Некорректный номер напитка! Пожалуйста, выберите напиток из списка.";
+    }
+};
+
+// Класс для исключения "поломка автомата"
+class MachineBrokenException : public exception {
+public:
+    const char* what() const noexcept override {
+        return "КРИТИЧЕСКАЯ ОШИБКА: Автомат сломался! Обратитесь к администратору. Ваши деньги возвращены.";
+    }
+};
+
+// Структура для хранения информации о напитке
+struct Drink {
+    string name;
+    double price;
+};
+
+// Класс автомата с газировкой
+class SodaMachine {
+private:
+    vector<Drink> drinks;
+    double insertedMoney;
+    random_device rd;
+    mt19937 gen;
+    uniform_int_distribution<> dist;
+
+public:
+    // Конструктор
+    SodaMachine() : insertedMoney(0), gen(rd()), dist(1, 5) {
+        // Инициализация напитков (минимум 3)
+        drinks.push_back({ "Кока-Кола", 80.0 });
+        drinks.push_back({ "Спрайт", 70.0 });
+        drinks.push_back({ "Фанта", 75.0 });
+        drinks.push_back({ "Пепси", 80.0 });
+        drinks.push_back({ "Тархун", 65.0 });
+    }
+
+    // Метод для проверки поломки (шанс 1/5)
+    bool isBroken() {
+        return dist(gen) == 1; // 20% шанс поломки
+    }
+
+    // Метод для внесения денег
+    void insertMoney(double money) {
+        if (money < 0) {
+            throw invalid_argument("Сумма денег не может быть отрицательной!");
+        }
+        insertedMoney = money;
+    }
+
+    // Метод для покупки напитка
+    void buyDrink(int drinkNumber) {
+        // Проверка корректности номера напитка
+        if (drinkNumber < 1 || drinkNumber > drinks.size()) {
+            throw InvalidDrinkException();
+        }
+
+        Drink& selectedDrink = drinks[drinkNumber - 1];
+
+        // Проверка наличия достаточной суммы
+        if (insertedMoney < selectedDrink.price) {
+            throw InsufficientFundsException(selectedDrink.price, insertedMoney);
+        }
+
+        // Проверка поломки автомата (шанс 1/5)
+        if (isBroken()) {
+            throw MachineBrokenException();
+        }
+
+        // Успешная покупка
+        double change = insertedMoney - selectedDrink.price;
+        cout << "\n✅ Успех! Вы приобрели: " << selectedDrink.name << endl;
+        cout << "💰 Стоимость: " << selectedDrink.price << " руб." << endl;
+        cout << "🔄 Сдача: " << change << " руб." << endl;
+        insertedMoney = 0;
+    }
+
+    // Метод для отображения меню
+    void showMenu() const {
+        cout << "\n========== МЕНЮ НАПИТКОВ ==========" << endl;
+        for (size_t i = 0; i < drinks.size(); i++) {
+            cout << i + 1 << ". " << drinks[i].name << " - " << drinks[i].price << " руб." << endl;
+        }
+        cout << "=====================================" << endl;
+    }
+
+    // Метод для получения внесенной суммы
+    double getInsertedMoney() const {
+        return insertedMoney;
+    }
+
+    // Метод для возврата денег
+    void refund() {
+        cout << "\n💸 Возврат денег: " << insertedMoney << " руб." << endl;
+        insertedMoney = 0;
+    }
+};
+
+// Функция для безопасного ввода числа
+double safeInputDouble(const string& prompt) {
+    double value;
+    cout << prompt;
+    cin >> value;
+
+    if (cin.fail()) {
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        throw invalid_argument("Ошибка: Введено некорректное значение! Требуется число.");
+    }
+
+    if (value < 0) {
+        throw invalid_argument("Ошибка: Сумма не может быть отрицательной!");
+    }
+
+    return value;
 }
 
-// Дополнительная шаблонная функция с двумя разными шаблонными параметрами
-// (меняет местами значения разных типов - требует совместимости типов)
-template <typename T1, typename T2>
-void swapDifferentTypes(T1& a, T2& b) {
-    T1 temp = a;
-    a = static_cast<T1>(b);
-    b = static_cast<T2>(temp);
+// Функция для безопасного ввода целого числа
+int safeInputInt(const string& prompt) {
+    int value;
+    cout << prompt;
+    cin >> value;
+
+    if (cin.fail()) {
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        throw invalid_argument("Ошибка: Введено некорректное значение! Требуется целое число.");
+    }
+
+    return value;
 }
 
 int main() {
     setlocale(LC_ALL, "Russian");
 
-    cout << "=== ДЕМОНСТРАЦИЯ РАБОТЫ ШАБЛОННОЙ ФУНКЦИИ ОБМЕНА ===" << endl;
-    cout << endl;
+    SodaMachine machine;
+    bool continueShopping = true;
 
-    // 1. Обмен значениями типа int
-    cout << "--- Обмен int ---" << endl;
-    int x = 10, y = 25;
-    cout << "До обмена: x = " << x << ", y = " << y << endl;
-    swapValues(x, y);
-    cout << "После обмена: x = " << x << ", y = " << y << endl;
-    cout << endl;
+    cout << "=== ДОБРО ПОЖАЛОВАТЬ В АВТОМАТ С ГАЗИРОВКОЙ ===" << endl;
+    cout << "Автомат может сломаться с вероятностью 20% при каждой покупке!" << endl;
 
-    // 2. Обмен значениями типа double
-    cout << "--- Обмен double ---" << endl;
-    double a = 3.14159, b = 2.71828;
-    cout << "До обмена: a = " << a << ", b = " << b << endl;
-    swapValues(a, b);
-    cout << "После обмена: a = " << a << ", b = " << b << endl;
-    cout << endl;
+    while (continueShopping) {
+        machine.showMenu();
 
-    // 3. Обмен значениями типа string
-    cout << "--- Обмен string ---" << endl;
-    string str1 = "Привет", str2 = "Мир";
-    cout << "До обмена: str1 = \"" << str1 << "\", str2 = \"" << str2 << "\"" << endl;
-    swapValues(str1, str2);
-    cout << "После обмена: str1 = \"" << str1 << "\", str2 = \"" << str2 << "\"" << endl;
-    cout << endl;
+        double money = 0;
+        int drinkChoice = 0;
 
-    // 4. Обмен значениями типа char
-    cout << "--- Обмен char ---" << endl;
-    char c1 = 'A', c2 = 'Z';
-    cout << "До обмена: c1 = " << c1 << ", c2 = " << c2 << endl;
-    swapValues(c1, c2);
-    cout << "После обмена: c1 = " << c1 << ", c2 = " << c2 << endl;
-    cout << endl;
+        try {
+            // Ввод суммы денег с обработкой ошибок
+            money = safeInputDouble("\nВведите сумму денег (руб.): ");
+            machine.insertMoney(money);
+            cout << "💰 Внесено: " << machine.getInsertedMoney() << " руб." << endl;
 
-    // 5. Обмен значениями типа bool
-    cout << "--- Обмен bool ---" << endl;
-    bool b1 = true, b2 = false;
-    cout << "До обмена: b1 = " << (b1 ? "true" : "false") << ", b2 = " << (b2 ? "true" : "false") << endl;
-    swapValues(b1, b2);
-    cout << "После обмена: b1 = " << (b1 ? "true" : "false") << ", b2 = " << (b2 ? "true" : "false") << endl;
-    cout << endl;
+            // Ввод номера напитка
+            drinkChoice = safeInputInt("Выберите номер напитка: ");
 
-    // 6. Демонстрация работы с разными типами (int и double)
-    cout << "--- Обмен разными типами (int и double) ---" << endl;
-    int intValue = 42;
-    double doubleValue = 99.99;
-    cout << "До обмена: intValue = " << intValue << ", doubleValue = " << doubleValue << endl;
-    swapDifferentTypes(intValue, doubleValue);
-    cout << "После обмена: intValue = " << intValue << ", doubleValue = " << doubleValue << endl;
-    cout << "(Примечание: происходит преобразование типов)" << endl;
-    cout << endl;
+            // Попытка покупки
+            machine.buyDrink(drinkChoice);
 
-    // 7. Демонстрация работы с разными типами (int и string - требует осторожности)
-    cout << "--- Обмен разными типами (int и string) ---" << endl;
-    int num = 100;
-    string text = "123";
-    cout << "До обмена: num = " << num << ", text = \"" << text << "\"" << endl;
+        }
+        catch (const InvalidDrinkException& e) {
+            cout << "\n⚠️ " << e.what() << endl;
+            machine.refund();
+        }
+        catch (const InsufficientFundsException& e) {
+            cout << "\n⚠️ " << e.what() << endl;
+            machine.refund();
+        }
+        catch (const MachineBrokenException& e) {
+            cout << "\n🔧 " << e.what() << endl;
+            machine.refund();
+            cout << "Автомат требует ремонта. Работа программы завершена." << endl;
+            break;
+        }
+        catch (const invalid_argument& e) {
+            cout << "\n❌ " << e.what() << endl;
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            cout << "Пожалуйста, попробуйте снова." << endl;
+            continue;
+        }
+        catch (const exception& e) {
+            cout << "\n⚠️ Неизвестная ошибка: " << e.what() << endl;
+            machine.refund();
+        }
+        catch (...) {
+            cout << "\n💥 КРИТИЧЕСКАЯ ОШИБКА! Непредвиденное исключение!" << endl;
+            cout << "Программа будет завершена." << endl;
+            break;
+        }
 
-    // Преобразование string в int (если возможно)
-    // Внимание: это демонстрация, в реальном коде нужно проверять возможность преобразования
-    try {
-        int tempNum = num;
-        num = stoi(text);
-        text = to_string(tempNum);
-        cout << "После обмена: num = " << num << ", text = \"" << text << "\"" << endl;
+        // Спрашиваем, хочет ли пользователь продолжить
+        char choice;
+        cout << "\nХотите продолжить покупки? (y/n): ";
+        cin >> choice;
+        if (choice != 'y' && choice != 'Y') {
+            continueShopping = false;
+            cout << "\nСпасибо за использование автомата! До свидания!" << endl;
+        }
     }
-    catch (const invalid_argument& e) {
-        cout << "Ошибка: невозможно преобразовать строку в число!" << endl;
-    }
-    cout << endl;
-
-    // 8. Использование стандартной функции swap (для сравнения)
-    cout << "--- Сравнение с std::swap ---" << endl;
-    int p = 7, q = 14;
-    cout << "До std::swap: p = " << p << ", q = " << q << endl;
-    std::swap(p, q);
-    cout << "После std::swap: p = " << p << ", q = " << q << endl;
-    cout << "Наша функция swapValues работает аналогично!" << endl;
 
     return 0;
 }

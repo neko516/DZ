@@ -1,89 +1,182 @@
-﻿#include <SFML/Graphics.hpp>
+﻿#include <iostream>
+#include <memory>
+#include <vector>
 
-int main()
-{
-    // Создаём окно
-    sf::RenderWindow window(sf::VideoMode(300, 500), "Traffic Light");
-    window.setFramerateLimit(60);
+using namespace std;
 
-    // Цвета для кругов (обычные и яркие)
-    sf::Color redNormal(150, 0, 0);
-    sf::Color redBright(255, 0, 0);
+// Базовый класс Person
+class Person {
+public:
+    virtual ~Person() {
+        cout << "🗑️ Уничтожен объект Person" << endl;
+    }
 
-    sf::Color yellowNormal(150, 150, 0);
-    sf::Color yellowBright(255, 255, 0);
+    virtual void CheckPassport() const {
+        cout << "📋 Проверка паспортных данных (базовый класс)" << endl;
+    }
+};
 
-    sf::Color greenNormal(0, 150, 0);
-    sf::Color greenBright(0, 255, 0);
+// Класс-наследник: мигрант из Бангладеша
+class BangladeshMigrant : public Person {
+public:
+    ~BangladeshMigrant() override {
+        cout << "🗑️ Уничтожен мигрант из Бангладеша" << endl;
+    }
 
-    // Корпус светофора
-    sf::RectangleShape body(sf::Vector2f(120.f, 300.f));
-    body.setFillColor(sf::Color(50, 50, 50));
-    body.setOutlineThickness(3.f);
-    body.setOutlineColor(sf::Color::Black);
-    body.setPosition(90.f, 100.f);
+    void CheckPassport() const override {
+        cout << "❌ ПАСПОРТНЫЕ ДАННЫЕ НЕ ВЕРНЫ! Документы отсутствуют или просрочены." << endl;
+        cout << "   ⚠️ Мигрант из Бангладеша: паспорт недействителен!" << endl;
+    }
 
-    // Круги
-    float radius = 35.f;
-    sf::CircleShape redLight(radius);
-    sf::CircleShape yellowLight(radius);
-    sf::CircleShape greenLight(radius);
+    void Run() const {
+        cout << "🏃‍♂️💨 МИГРАНТ ПЫТАЕТСЯ УБЕЖАТЬ! Задержите нарушителя!" << endl;
+    }
+};
 
-    redLight.setPosition(110.f, 115.f);
-    yellowLight.setPosition(110.f, 200.f);
-    greenLight.setPosition(110.f, 285.f);
+// Класс-наследник: коренной москвич
+class NativeMuscovite : public Person {
+public:
+    ~NativeMuscovite() override {
+        cout << "🗑️ Уничтожен коренной москвич" << endl;
+    }
 
-    // Начальные цвета
-    redLight.setFillColor(redBright);   // Начинаем с красного (яркий)
-    yellowLight.setFillColor(yellowNormal);
-    greenLight.setFillColor(greenNormal);
+    void CheckPassport() const override {
+        cout << "✅ ПАСПОРТНЫЕ ДАННЫЕ ВЕРНЫ! Гражданин РФ, Москва." << endl;
+        cout << "   📍 Коренной москвич: все документы в порядке." << endl;
+    }
+};
 
-    int activeLight = 0; // 0 - красный, 1 - жёлтый, 2 - зелёный
+// Дополнительный класс для демонстрации - турист (для расширения примера)
+class Tourist : public Person {
+private:
+    string country;
 
-    // Главный цикл
-    while (window.isOpen())
-    {
-        sf::Event event;
-        while (window.pollEvent(event))
-        {
-            if (event.type == sf::Event::Closed)
-                window.close();
+public:
+    Tourist(const string& c) : country(c) {}
 
-            // Нажатие пробела
-            if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Space)
-            {
-                // Сначала делаем все цвета тусклыми
-                redLight.setFillColor(redNormal);
-                yellowLight.setFillColor(yellowNormal);
-                greenLight.setFillColor(greenNormal);
+    ~Tourist() override {
+        cout << "🗑️ Уничтожен турист из " << country << endl;
+    }
 
-                // Переключаем активный цвет
-                activeLight = (activeLight + 1) % 3;
+    void CheckPassport() const override {
+        cout << "🛂 ПАСПОРТНЫЕ ДАННЫЕ НА ПРОВЕРКЕ... Турист из " << country << endl;
+        cout << "   ✅ Виза действительна, паспорт в порядке." << endl;
+    }
 
-                // Делаем активный цвет ярким
-                switch (activeLight)
-                {
-                case 0:
-                    redLight.setFillColor(redBright);
-                    break;
-                case 1:
-                    yellowLight.setFillColor(yellowBright);
-                    break;
-                case 2:
-                    greenLight.setFillColor(greenBright);
-                    break;
-                }
+    void ShowVisa() const {
+        cout << "   📄 Виза туриста из " << country << " действительна до 31.12.2025" << endl;
+    }
+};
+
+int main() {
+    setlocale(LC_ALL, "Russian");
+
+    cout << "================================================" << endl;
+    cout << "       ПАСПОРТНЫЙ КОНТРОЛЬ В АЭРОПОРТУ" << endl;
+    cout << "================================================" << endl;
+    cout << "Добро пожаловать в зону паспортного контроля!" << endl;
+    cout << endl;
+
+    // Создаем массив из уникальных указателей на Person
+    vector<unique_ptr<Person>> people;
+
+    // Добавляем объекты классов-наследников
+    people.push_back(make_unique<BangladeshMigrant>());
+    people.push_back(make_unique<NativeMuscovite>());
+    people.push_back(make_unique<BangladeshMigrant>());
+    people.push_back(make_unique<NativeMuscovite>());
+    people.push_back(make_unique<BangladeshMigrant>());
+
+    // Добавляем туриста для дополнительной демонстрации
+    people.push_back(make_unique<Tourist>("Италия"));
+    people.push_back(make_unique<Tourist>("Япония"));
+
+    cout << "👥 Всего людей в очереди: " << people.size() << endl;
+    cout << "================================================" << endl;
+    cout << endl;
+
+    // Проходим по очереди паспортного контроля
+    int counter = 1;
+    for (const auto& person : people) {
+        cout << "🔹 ПАССАЖИР #" << counter++ << ":" << endl;
+        cout << "----------------------------------------" << endl;
+
+        // Вызываем функцию CheckPassport (полиморфизм)
+        person->CheckPassport();
+
+        // С помощью dynamic_cast определяем, является ли объект мигрантом из Бангладеша
+        BangladeshMigrant* migrant = dynamic_cast<BangladeshMigrant*>(person.get());
+
+        if (migrant) {
+            // Если это мигрант, вызываем функцию Run()
+            cout << "🔴 ВНИМАНИЕ: Обнаружен нелегальный мигрант!" << endl;
+            migrant->Run();
+        }
+        else {
+            // Проверяем, может быть это турист (дополнительная демонстрация)
+            Tourist* tourist = dynamic_cast<Tourist*>(person.get());
+            if (tourist) {
+                cout << "🟢 Турист проходит дополнительную проверку:" << endl;
+                tourist->ShowVisa();
+            }
+            else {
+                cout << "🟢 Пассажир успешно прошел паспортный контроль." << endl;
             }
         }
 
-        // Отрисовка
-        window.clear(sf::Color(200, 200, 200)); // Серый фон
-        window.draw(body);
-        window.draw(redLight);
-        window.draw(yellowLight);
-        window.draw(greenLight);
-        window.display();
+        cout << "----------------------------------------" << endl;
+        cout << endl;
     }
 
+    // Дополнительная демонстрация: статистика
+    cout << "================================================" << endl;
+    cout << "           СТАТИСТИКА ПРОВЕРКИ" << endl;
+    cout << "================================================" << endl;
+
+    int migrantCount = 0;
+    int nativeCount = 0;
+    int touristCount = 0;
+
+    for (const auto& person : people) {
+        if (dynamic_cast<BangladeshMigrant*>(person.get())) {
+            migrantCount++;
+        }
+        else if (dynamic_cast<NativeMuscovite*>(person.get())) {
+            nativeCount++;
+        }
+        else if (dynamic_cast<Tourist*>(person.get())) {
+            touristCount++;
+        }
+    }
+
+    cout << "📊 Результаты паспортного контроля:" << endl;
+    cout << "   • Мигрантов из Бангладеша: " << migrantCount << endl;
+    cout << "   • Коренных москвичей: " << nativeCount << endl;
+    cout << "   • Туристов: " << touristCount << endl;
+    cout << "   • Всего проверено: " << people.size() << endl;
+
+    // Демонстрация работы с raw pointer (альтернативный способ)
+    cout << "\n================================================" << endl;
+    cout << "     ДОПОЛНИТЕЛЬНАЯ ДЕМОНСТРАЦИЯ" << endl;
+    cout << "================================================" << endl;
+    cout << "Проверка отдельного пассажира (raw pointer):" << endl;
+    cout << "----------------------------------------" << endl;
+
+    Person* rawPerson = new BangladeshMigrant();
+    rawPerson->CheckPassport();
+
+    BangladeshMigrant* rawMigrant = dynamic_cast<BangladeshMigrant*>(rawPerson);
+    if (rawMigrant) {
+        rawMigrant->Run();
+    }
+
+    delete rawPerson;
+
+    cout << "\n================================================" << endl;
+    cout << "              КОНЕЦ ПРОВЕРКИ" << endl;
+    cout << "================================================" << endl;
+    cout << "Паспортный контроль завершен. Спасибо за внимание!" << endl;
+
+    // Умные указатели автоматически удалят все объекты
     return 0;
 }

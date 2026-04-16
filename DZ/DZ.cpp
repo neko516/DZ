@@ -1,284 +1,368 @@
 ﻿#include <iostream>
-#include <string>
+#include <map>
 #include <vector>
+#include <set>
+#include <string>
+#include <memory>
+#include <algorithm>
 
 using namespace std;
 
-// Класс Дерево
-class Tree {
+// Класс Creature (существо)
+class Creature {
 private:
-    int branchCount;
-    string species;
+    string name;
+    set<string> genes;          // множество генов
+    vector<Creature*> children; // вектор детей (указатели)
 
 public:
     // Конструктор
-    Tree(int branches, const string& type) : branchCount(branches), species(type) {
-        cout << "🌳 СОЗДАНО дерево: " << species
-            << " с " << branchCount << " ветками (адрес: " << this << ")" << endl;
+    Creature(const string& n, const set<string>& g) : name(n), genes(g) {
+        cout << "✅ Создано существо: " << name << " (генов: " << genes.size() << ")" << endl;
     }
 
     // Деструктор
-    ~Tree() {
-        cout << "❌ УНИЧТОЖЕНО дерево: " << species
-            << " (адрес: " << this << ")" << endl;
+    ~Creature() {
+        cout << "❌ Уничтожено существо: " << name << endl;
     }
 
-    // Метод для вывода информации о дереве
-    void displayInfo() const {
-        cout << "Дерево: " << species << ", веток: " << branchCount;
+    // Функция добавления ребенка
+    void addChild(Creature* child) {
+        if (child != nullptr) {
+            children.push_back(child);
+            cout << "   👶 У " << name << " появился ребенок: " << child->getName() << endl;
+        }
     }
 
     // Геттеры
-    int getBranchCount() const { return branchCount; }
-    string getSpecies() const { return species; }
+    string getName() const { return name; }
+    const set<string>& getGenes() const { return genes; }
+    const vector<Creature*>& getChildren() const { return children; }
+
+    // Вывод информации о существе
+    void printInfo(int indent = 0) const {
+        string indentStr(indent, ' ');
+        cout << indentStr << "📌 " << name << endl;
+
+        // Вывод генов
+        cout << indentStr << "   🧬 Гены: ";
+        if (genes.empty()) {
+            cout << "нет";
+        }
+        else {
+            int count = 0;
+            for (const auto& gene : genes) {
+                if (count++ > 0) cout << ", ";
+                cout << gene;
+            }
+        }
+        cout << endl;
+
+        // Вывод детей
+        if (!children.empty()) {
+            cout << indentStr << "   👨‍👩‍👧 Дети (" << children.size() << "): ";
+            for (size_t i = 0; i < children.size(); i++) {
+                if (i > 0) cout << ", ";
+                cout << children[i]->getName();
+            }
+            cout << endl;
+        }
+    }
+
+    // Рекурсивный вывод всех потомков
+    void printDescendants(int indent = 2) const {
+        string indentStr(indent, ' ');
+        for (Creature* child : children) {
+            cout << indentStr << "├─ " << child->getName() << endl;
+            child->printDescendants(indent + 2);
+        }
+    }
+
+    // Получение всех потомков (рекурсивно)
+    void getAllDescendants(vector<Creature*>& result) const {
+        for (Creature* child : children) {
+            result.push_back(child);
+            child->getAllDescendants(result);
+        }
+    }
+
+    // Проверка, является ли это существо предком другого
+    bool isAncestorOf(const Creature* other) const {
+        if (this == other) return true;
+        for (Creature* child : children) {
+            if (child->isAncestorOf(other)) return true;
+        }
+        return false;
+    }
 };
 
-// Класс Лес (контейнер для деревьев)
-class Forest {
+// Класс GenTree (генеалогическое дерево)
+class GenTree {
 private:
-    // Агрегация: храним указатели на деревья (не владеем ими)
-    vector<Tree*> trees;
+    map<string, Creature*> registry; // карта: id (имя) -> указатель на существо
 
 public:
     // Конструктор
-    Forest() {
-        cout << "🏞️ СОЗДАН лес (адрес: " << this << ")" << endl;
+    GenTree() {
+        cout << "\n🌳 СОЗДАНО ГЕНЕАЛОГИЧЕСКОЕ ДЕРЕВО" << endl;
+        cout << "====================================" << endl;
     }
 
     // Деструктор
-    ~Forest() {
-        cout << "🔥 УНИЧТОЖЕН лес (адрес: " << this << ")" << endl;
-        cout << "   Лес уничтожен, но деревья продолжают существовать!" << endl;
-        // НЕ удаляем деревья! Они существуют отдельно от леса
-    }
+    ~GenTree() {
+        cout << "\n💀 УНИЧТОЖЕНИЕ ГЕНЕАЛОГИЧЕСКОГО ДЕРЕВА" << endl;
+        cout << "====================================" << endl;
 
-    // Метод добавления дерева в лес (получает указатель извне)
-    void addTree(Tree* tree) {
-        if (tree != nullptr) {
-            trees.push_back(tree);
-            cout << "   ➕ Дерево добавлено в лес: ";
-            tree->displayInfo();
-            cout << endl;
+        // Удаляем всех существ
+        for (auto& pair : registry) {
+            delete pair.second;
         }
+        registry.clear();
+        cout << "Все существа удалены" << endl;
     }
 
-    // Метод вывода всех деревьев в лесу
-    void displayForest() const {
-        if (trees.empty()) {
-            cout << "   Лес пуст" << endl;
+    // Метод добавления существа
+    bool addCreature(const string& name, const set<string>& genes) {
+        // Проверяем, нет ли уже существа с таким именем
+        if (registry.find(name) != registry.end()) {
+            cout << "⚠️ Ошибка: Существо с именем '" << name << "' уже существует!" << endl;
+            return false;
+        }
+
+        // Создаем новое существо
+        Creature* newCreature = new Creature(name, genes);
+        registry[name] = newCreature;
+        return true;
+    }
+
+    // Метод связывания родителя и ребенка
+    bool linkParentChild(const string& parentName, const string& childName) {
+        // Проверяем существование обоих существ
+        auto parentIt = registry.find(parentName);
+        auto childIt = registry.find(childName);
+
+        if (parentIt == registry.end()) {
+            cout << "⚠️ Ошибка: Родитель '" << parentName << "' не найден!" << endl;
+            return false;
+        }
+
+        if (childIt == registry.end()) {
+            cout << "⚠️ Ошибка: Ребенок '" << childName << "' не найден!" << endl;
+            return false;
+        }
+
+        Creature* parent = parentIt->second;
+        Creature* child = childIt->second;
+
+        // Проверяем, не создаст ли это цикл
+        if (child->isAncestorOf(parent)) {
+            cout << "⚠️ Ошибка: Добавление этой связи создаст цикл в генеалогическом дереве!" << endl;
+            return false;
+        }
+
+        // Добавляем ребенка родителю
+        parent->addChild(child);
+        return true;
+    }
+
+    // Поиск существа по имени
+    Creature* findCreature(const string& name) {
+        auto it = registry.find(name);
+        if (it != registry.end()) {
+            return it->second;
+        }
+        return nullptr;
+    }
+
+    // Поиск всех потомков предка
+    vector<Creature*> findDescendants(const string& ancestorName) {
+        vector<Creature*> descendants;
+        Creature* ancestor = findCreature(ancestorName);
+
+        if (ancestor == nullptr) {
+            cout << "⚠️ Предок '" << ancestorName << "' не найден!" << endl;
+            return descendants;
+        }
+
+        ancestor->getAllDescendants(descendants);
+        return descendants;
+    }
+
+    // Вывод всех потомков предка
+    void printDescendantsOf(const string& ancestorName) {
+        cout << "\n🔍 ПОИСК ПОТОМКОВ: " << ancestorName << endl;
+        cout << "----------------------------------------" << endl;
+
+        Creature* ancestor = findCreature(ancestorName);
+        if (ancestor == nullptr) {
+            cout << "❌ Предок не найден!" << endl;
             return;
         }
 
-        cout << "   В лесу " << trees.size() << " деревьев:" << endl;
-        for (size_t i = 0; i < trees.size(); i++) {
-            cout << "      " << i + 1 << ". ";
-            trees[i]->displayInfo();
+        cout << "📊 " << ancestor->getName() << ":" << endl;
+        ancestor->printDescendants();
+
+        vector<Creature*> descendants = findDescendants(ancestorName);
+        cout << "\n📈 Всего потомков: " << descendants.size() << endl;
+    }
+
+    // Вывод всей информации о генеалогическом дереве
+    void printGenTreeInfo() const {
+        cout << "\n🌳 ГЕНЕАЛОГИЧЕСКОЕ ДЕРЕВО ПИТОМЦЕВ" << endl;
+        cout << "====================================" << endl;
+        cout << "Всего существ в базе: " << registry.size() << endl;
+        cout << "------------------------------------" << endl;
+
+        // Находим корневых существ (тех, у кого нет родителей)
+        // Для этого нужно определить, кто является чьим-то ребенком
+        set<Creature*> hasParent;
+        for (const auto& pair : registry) {
+            for (Creature* child : pair.second->getChildren()) {
+                hasParent.insert(child);
+            }
+        }
+
+        // Выводим корневых существ и их потомков
+        bool hasRoot = false;
+        for (const auto& pair : registry) {
+            if (hasParent.find(pair.second) == hasParent.end()) {
+                if (!hasRoot) {
+                    cout << "\n👑 ГЛАВНЫЕ ПРЕДКИ (корневые существа):" << endl;
+                    hasRoot = true;
+                }
+                cout << "\n";
+                pair.second->printInfo();
+                if (!pair.second->getChildren().empty()) {
+                    cout << "   👇 Потомки:" << endl;
+                    pair.second->printDescendants(4);
+                }
+            }
+        }
+
+        // Выводим существ, у которых есть родители (не корневые)
+        cout << "\n📋 ВСЕ СУЩЕСТВА ПО АЛФАВИТУ:" << endl;
+        cout << "------------------------------------" << endl;
+        for (const auto& pair : registry) {
+            pair.second->printInfo();
             cout << endl;
         }
     }
 
-    // Получить количество деревьев
-    size_t getTreeCount() const { return trees.size(); }
-};
+    // Статистика по генам
+    void printGeneStats() const {
+        cout << "\n🧬 СТАТИСТИКА ГЕНОВ" << endl;
+        cout << "------------------------------------" << endl;
 
-// Дополнительный класс для демонстрации композиции (для сравнения)
-class ComposedForest {
-private:
-    // Композиция: храним объекты по значению (владеем ими)
-    vector<Tree> ownedTrees;
+        map<string, int> geneFrequency;
+        for (const auto& pair : registry) {
+            for (const auto& gene : pair.second->getGenes()) {
+                geneFrequency[gene]++;
+            }
+        }
 
-public:
-    ComposedForest() {
-        cout << "🏞️ СОЗДАН лес с композицией (адрес: " << this << ")" << endl;
-    }
-
-    ~ComposedForest() {
-        cout << "🔥 УНИЧТОЖЕН лес с композицией (адрес: " << this << ")" << endl;
-        // Деревья будут уничтожены автоматически вместе с лесом!
-        cout << "   ⚠️ ДЕРЕВЬЯ УНИЧТОЖЕНЫ вместе с лесом!" << endl;
-    }
-
-    void addTree(const Tree& tree) {
-        ownedTrees.push_back(tree);
-        cout << "   ➕ Дерево добавлено в лес (композиция)" << endl;
+        cout << "Частота встречаемости генов:" << endl;
+        for (const auto& pair : geneFrequency) {
+            cout << "   " << pair.first << ": " << pair.second << " существ(а)" << endl;
+        }
     }
 };
 
 int main() {
     setlocale(LC_ALL, "Russian");
 
-    cout << "================================================" << endl;
-    cout << "    ДЕМОНСТРАЦИЯ АГРЕГАЦИИ VS КОМПОЗИЦИИ" << endl;
-    cout << "================================================" << endl << endl;
+    // Создаем генеалогическое дерево
+    GenTree familyTree;
 
-    // ===== ЧАСТЬ 1: АГРЕГАЦИЯ (лес хранит указатели) =====
-    cout << "🔹 ЧАСТЬ 1: АГРЕГАЦИЯ (лес хранит УКАЗАТЕЛИ)" << endl;
-    cout << "------------------------------------------------" << endl;
+    // Демонстрация 1: Добавление существ
+    cout << "\n📝 ДОБАВЛЕНИЕ ПИТОМЦЕВ" << endl;
+    cout << "------------------------------------" << endl;
 
-    // Создаем деревья вне леса
-    cout << "\n1. Создаем деревья ВНЕ леса:" << endl;
-    Tree* oak = new Tree(150, "Дуб");
-    Tree* pine = new Tree(80, "Сосна");
-    Tree* birch = new Tree(120, "Береза");
+    // Собачки
+    familyTree.addCreature("Рекс", { "шерсть", "хвост", "лай", "охранник" });
+    familyTree.addCreature("Белка", { "шерсть", "хвост", "лай", "быстрая" });
+    familyTree.addCreature("Шарик", { "шерсть", "хвост", "лай", "игривый" });
+    familyTree.addCreature("Дружок", { "шерсть", "хвост", "лай", "смелый" });
+    familyTree.addCreature("Тузик", { "шерсть", "хвост", "лай", "маленький" });
 
-    cout << "\n2. Создаем лес:" << endl;
-    Forest* myForest = new Forest();
+    // Кошечки
+    familyTree.addCreature("Мурка", { "шерсть", "хвост", "мяуканье", "охотник" });
+    familyTree.addCreature("Барсик", { "шерсть", "хвост", "мяуканье", "полосатый" });
+    familyTree.addCreature("Снежок", { "шерсть", "хвост", "мяуканье", "белый" });
 
-    cout << "\n3. Добавляем деревья в лес:" << endl;
-    myForest->addTree(oak);
-    myForest->addTree(pine);
-    myForest->addTree(birch);
+    // Попугаи
+    familyTree.addCreature("Кеша", { "перья", "клюв", "говорун", "умный" });
+    familyTree.addCreature("Гоша", { "перья", "клюв", "говорун", "веселый" });
 
-    cout << "\n4. Выводим содержимое леса:" << endl;
-    myForest->displayForest();
+    // Хомяки
+    familyTree.addCreature("Хома", { "шерсть", "грызун", "ночной", "пухлый" });
 
-    cout << "\n5. Удаляем лес:" << endl;
-    delete myForest;
+    cout << "\n🔗 УСТАНОВКА РОДИТЕЛЬСКИХ СВЯЗЕЙ" << endl;
+    cout << "------------------------------------" << endl;
 
-    cout << "\n6. Проверяем, существуют ли деревья после удаления леса:" << endl;
-    cout << "   Дуб (адрес: " << oak << "): ";
-    oak->displayInfo();
-    cout << endl;
-    cout << "   Сосна (адрес: " << pine << "): ";
-    pine->displayInfo();
-    cout << endl;
-    cout << "   Береза (адрес: " << birch << "): ";
-    birch->displayInfo();
-    cout << endl;
+    // Собачья семья
+    familyTree.linkParentChild("Рекс", "Шарик");
+    familyTree.linkParentChild("Рекс", "Дружок");
+    familyTree.linkParentChild("Белка", "Шарик");
+    familyTree.linkParentChild("Белка", "Дружок");
+    familyTree.linkParentChild("Шарик", "Тузик");
 
-    cout << "\n7. Очищаем деревья вручную:" << endl;
-    delete oak;
-    delete pine;
-    delete birch;
+    // Кошачья семья
+    familyTree.linkParentChild("Мурка", "Барсик");
+    familyTree.linkParentChild("Мурка", "Снежок");
 
-    // ===== ЧАСТЬ 2: КОМПОЗИЦИЯ (для сравнения) =====
-    cout << "\n\n🔸 ЧАСТЬ 2: КОМПОЗИЦИЯ (лес хранит объекты ПО ЗНАЧЕНИЮ)" << endl;
-    cout << "--------------------------------------------------------" << endl;
+    // Попугаи
+    familyTree.linkParentChild("Кеша", "Гоша");
 
-    {
-        cout << "\n1. Создаем лес с композицией:" << endl;
-        ComposedForest composedForest;
+    // Межвидовые связи (приемыши)
+    familyTree.linkParentChild("Мурка", "Кеша"); // Кошка воспитала попугая :)
 
-        cout << "\n2. Создаем и добавляем деревья:" << endl;
-        Tree apple(50, "Яблоня");
-        Tree cherry(40, "Вишня");
+    // Попробуем создать цикл (должно быть отклонено)
+    cout << "\n🧪 ТЕСТ ЗАЩИТЫ ОТ ЦИКЛОВ:" << endl;
+    cout << "------------------------------------" << endl;
+    familyTree.linkParentChild("Тузик", "Рекс"); // Попытка сделать прадедушку внуком
 
-        composedForest.addTree(apple);
-        composedForest.addTree(cherry);
+    // Демонстрация поиска потомков
+    cout << "\n🔍 ПОИСК ПОТОМКОВ" << endl;
+    cout << "====================================" << endl;
 
-        cout << "\n3. Выход из области видимости - лес будет уничтожен" << endl;
-    } // Здесь composedForest уничтожается, а вместе с ним и деревья
+    familyTree.printDescendantsOf("Рекс");
+    familyTree.printDescendantsOf("Мурка");
+    familyTree.printDescendantsOf("Кеша");
+    familyTree.printDescendantsOf("Снежок"); // Бездетный
 
-    cout << "\n   (Деревья Яблоня и Вишня уничтожены вместе с лесом)" << endl;
+    // Вывод всей информации о дереве
+    familyTree.printGenTreeInfo();
 
-    // ===== ЧАСТЬ 3: ДОПОЛНИТЕЛЬНАЯ ДЕМОНСТРАЦИЯ =====
-    cout << "\n\n🔹 ЧАСТЬ 3: ДОПОЛНИТЕЛЬНАЯ ДЕМОНСТРАЦИЯ" << endl;
-    cout << "------------------------------------------------" << endl;
+    // Статистика по генам
+    familyTree.printGeneStats();
 
-    cout << "\nСоздаем новый лес и добавляем деревья:" << endl;
-    Forest* anotherForest = new Forest();
+    // Дополнительная демонстрация: работа с отдельными существами
+    cout << "\n🎯 ИНДИВИДУАЛЬНАЯ ИНФОРМАЦИЯ О СУЩЕСТВЕ" << endl;
+    cout << "====================================" << endl;
 
-    Tree* maple = new Tree(90, "Клен");
-    Tree* ash = new Tree(70, "Ясень");
+    Creature* rex = familyTree.findCreature("Рекс");
+    if (rex) {
+        cout << "\nИнформация о Рексе:" << endl;
+        rex->printInfo();
 
-    anotherForest->addTree(maple);
-    anotherForest->addTree(ash);
+        vector<Creature*> descendants = familyTree.findDescendants("Рекс");
+        cout << "\nПрямые потомки Рекса: ";
+        for (Creature* desc : descendants) {
+            cout << desc->getName() << " ";
+        }
+        cout << "(" << descendants.size() << ")" << endl;
+    }
 
-    cout << "\nСодержимое леса:" << endl;
-    anotherForest->displayForest();
+    // Поиск несуществующего существа
+    cout << "\n🔍 ПОИСК НЕСУЩЕСТВУЮЩЕГО СУЩЕСТВА:" << endl;
+    cout << "------------------------------------" << endl;
+    Creature* unknown = familyTree.findCreature("Васька");
+    if (unknown == nullptr) {
+        cout << "❌ Существо 'Васька' не найдено в генеалогическом дереве" << endl;
+    }
 
-    cout << "\nУдаляем лес:" << endl;
-    delete anotherForest;
-
-    cout << "\nДеревья всё ещё существуют:" << endl;
-    cout << "   ";
-    maple->displayInfo();
-    cout << endl;
-    cout << "   ";
-    ash->displayInfo();
-    cout << endl;
-
-    cout << "\nОчищаем деревья:" << endl;
-    delete maple;
-    delete ash;
-
-    // ===== ОТВЕТЫ НА ВОПРОСЫ =====
-    cout << "\n\n================================================" << endl;
-    cout << "    ОТВЕТЫ НА ВОПРОСЫ" << endl;
-    cout << "================================================" << endl;
-
-    cout << "\nВОПРОС: Объяснить продолжительность жизни объектов" << endl;
-    cout << "в классе-контейнере при композиции и агрегации." << endl;
-    cout << "Учитывать ситуации по значению и указатели." << endl;
-    cout << "\n================================================" << endl;
-
-    cout << "\n📚 КОМПОЗИЦИЯ (COMPOSITION) - 'часть-целое', сильная связь:" << endl;
-    cout << "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" << endl;
-    cout << "• Объекты хранятся ПО ЗНАЧЕНИЮ (как поля или в векторе<объектов>)" << endl;
-    cout << "• Контейнер ВЛАДЕЕТ объектами" << endl;
-    cout << "• Время жизни объектов = время жизни контейнера" << endl;
-    cout << "• При создании контейнера создаются и объекты" << endl;
-    cout << "• При уничтожении контейнера уничтожаются и объекты" << endl;
-    cout << "• Объекты не могут существовать без контейнера" << endl;
-    cout << "• Пример: класс House и класс Room (комнаты не существуют без дома)" << endl;
-    cout << endl;
-    cout << "  Пример кода:" << endl;
-    cout << "  class House {" << endl;
-    cout << "      Room rooms[5];  // композиция - по значению" << endl;
-    cout << "  };" << endl;
-    cout << "  // При удалении House, удаляются и Room" << endl;
-
-    cout << "\n📎 АГРЕГАЦИЯ (AGGREGATION) - 'целое и часть', слабая связь:" << endl;
-    cout << "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" << endl;
-    cout << "• Объекты хранятся по УКАЗАТЕЛЯМ (или ссылкам)" << endl;
-    cout << "• Контейнер НЕ ВЛАДЕЕТ объектами" << endl;
-    cout << "• Объекты создаются ВНЕ контейнера" << endl;
-    cout << "• Время жизни объектов НЕ ЗАВИСИТ от контейнера" << endl;
-    cout << "• При уничтожении контейнера объекты продолжают существовать" << endl;
-    cout << "• Контейнер только использует объекты, но не управляет их памятью" << endl;
-    cout << "• Пример: класс University и класс Student (студенты существуют без вуза)" << endl;
-    cout << endl;
-    cout << "  Пример кода:" << endl;
-    cout << "  class University {" << endl;
-    cout << "      vector<Student*> students;  // агрегация - указатели" << endl;
-    cout << "  };" << endl;
-    cout << "  // При удалении University, Student продолжают существовать" << endl;
-
-    cout << "\n📊 СРАВНИТЕЛЬНАЯ ТАБЛИЦА:" << endl;
-    cout << "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" << endl;
-    cout << "Характеристика          | Композиция     | Агрегация" << endl;
-    cout << "────────────────────────┼────────────────┼────────────────" << endl;
-    cout << "Способ хранения         | По значению    | По указателю/ссылке" << endl;
-    cout << "Владеет ли контейнер?   | Да             | Нет" << endl;
-    cout << "Время жизни объектов    | Как у контейнера| Независимое" << endl;
-    cout << "Объекты могут существовать без контейнера? | Нет | Да" << endl;
-    cout << "Ответственность за память| Контейнер     | Внешний код" << endl;
-    cout << "Удаление контейнера     | Удаляет объекты| НЕ удаляет объекты" << endl;
-
-    cout << "\n⚠️ ВАЖНЫЕ МОМЕНТЫ:" << endl;
-    cout << "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" << endl;
-    cout << "1. При композиции (по значению):" << endl;
-    cout << "   - Объекты создаются автоматически в конструкторе" << endl;
-    cout << "   - Деструктор контейнера автоматически вызывает деструкторы объектов" << endl;
-    cout << "   - Нельзя случайно 'потерять' объекты или вызвать утечку памяти" << endl;
-    cout << endl;
-    cout << "2. При агрегации (по указателям):" << endl;
-    cout << "   - Нужно вручную управлять памятью (new/delete)" << endl;
-    cout << "   - Может возникнуть проблема 'висячих указателей' (dangling pointers)" << endl;
-    cout << "   - Контейнер не должен удалять объекты в своем деструкторе" << endl;
-    cout << "   - Объекты могут принадлежать нескольким контейнерам одновременно" << endl;
-    cout << endl;
-    cout << "3. Современные подходы:" << endl;
-    cout << "   - Для композиции: хранить объекты по значению" << endl;
-    cout << "   - Для агрегации: использовать shared_ptr для автоматического управления" << endl;
-    cout << "   - Для наблюдения: использовать weak_ptr (если нужно избежать циклических ссылок)" << endl;
-
-    cout << "\n✅ ВЫВОД из программы:" << endl;
-    cout << "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" << endl;
-    cout << "• В демонстрации выше лес хранил указатели на деревья (АГРЕГАЦИЯ)" << endl;
-    cout << "• После удаления леса деревья продолжили существовать" << endl;
-    cout << "• Деревья были удалены только после явного вызова delete" << endl;
-    cout << "• При композиции деревья были бы удалены автоматически" << endl;
+    cout << "\n✅ ПРОГРАММА ЗАВЕРШЕНА" << endl;
+    cout << "====================================" << endl;
 
     return 0;
 }
